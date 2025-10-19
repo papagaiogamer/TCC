@@ -13,6 +13,7 @@ socket.on('auth-success', (data) => {
     messageDiv.textContent = data.message;
     messageDiv.className = 'success';
     document.getElementById('timeForm').reset();
+    
 });
 
 socket.on('auth-error', (data) => {

@@ -62,6 +62,7 @@ function updateMissingUsersList(users) {
         row.innerHTML = `<td colspan="3" style="text-align:center; color:gray;">Todos os usuários bateram ponto hoje 🎉</td>`;
         tbody.appendChild(row);
         return;
+        
     }
 
     users.forEach(user => {
