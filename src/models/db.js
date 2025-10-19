@@ -6,6 +6,7 @@ const db = new sqlite3.Database(dbPath);
 
 // Criação das tabelas
 const createTables = () => {
+    // Tabela de usuários
     db.run(`CREATE TABLE IF NOT EXISTS users (
         id INTEGER PRIMARY KEY AUTOINCREMENT,
         name TEXT NOT NULL,
@@ -17,13 +18,21 @@ const createTables = () => {
         is_admin INTEGER DEFAULT 0
     )`);
 
+    // Tabela de registros de ponto
     db.run(`CREATE TABLE IF NOT EXISTS time_records (
         id INTEGER PRIMARY KEY AUTOINCREMENT,
         user_id INTEGER NOT NULL,
         date TEXT NOT NULL,
         time TEXT NOT NULL,
+        type TEXT CHECK(type IN ('entrada', 'saida')) NOT NULL DEFAULT 'entrada',
         FOREIGN KEY(user_id) REFERENCES users(id)
-    )`);
+    )`, (err) => {
+        if (err) {
+            console.error('Erro ao criar tabela time_records:', err);
+        } else {
+            console.log('Tabelas verificadas/criadas com sucesso.');
+        }
+    });
 };
 
 createTables();

@@ -1,24 +1,28 @@
 const socket = io();
 
+// =====================
 // Funções do Modal
+// =====================
 function openModal() {
     document.getElementById('modalOverlay').style.display = 'block';
     document.getElementById('registerModal').style.display = 'block';
-    document.body.style.overflow = 'hidden'; // Impede rolagem do body
+    document.body.style.overflow = 'hidden';
 }
 
 function closeModal() {
     document.getElementById('modalOverlay').style.display = 'none';
     document.getElementById('registerModal').style.display = 'none';
-    document.body.style.overflow = 'auto'; // Restaura rolagem do body
+    document.body.style.overflow = 'auto';
     document.getElementById('registerForm').reset();
     document.getElementById('registerMessage').textContent = '';
     document.getElementById('registerMessage').className = '';
 }
 
-// Fecha o modal se clicar fora dele
 document.getElementById('modalOverlay').addEventListener('click', closeModal);
 
+// =====================
+// Registro de Usuário
+// =====================
 function submitForm() {
     const newUser = {
         name: document.getElementById('newName').value,
@@ -28,7 +32,6 @@ function submitForm() {
         exitTime: document.getElementById('exitTime').value
     };
 
-    // Validação básica
     if (!newUser.name || !newUser.cpf || !newUser.password || !newUser.entryTime || !newUser.exitTime) {
         const messageDiv = document.getElementById('registerMessage');
         messageDiv.textContent = 'Preencha todos os campos!';
@@ -39,30 +42,44 @@ function submitForm() {
     socket.emit('register-user', newUser);
 }
 
+// =====================
+// Atualização das Tabelas
+// =====================
 function updateRecordsList(records) {
     const tbody = document.getElementById('recordsList');
     tbody.innerHTML = '';
-    
+
+    if (!records || records.length === 0) {
+        const row = document.createElement('tr');
+        row.innerHTML = `<td colspan="4" style="text-align:center; color:gray;">Nenhum ponto registrado hoje.</td>`;
+        tbody.appendChild(row);
+        return;
+    }
+
     records.forEach(record => {
         const row = document.createElement('tr');
+        const typeClass = record.type === 'entrada' ? 'entrada' : 'saida';
+        const typeLabel = record.type === 'entrada' ? 'Entrada' : 'Saída';
+
         row.innerHTML = `
             <td>${record.userId}</td>
             <td>${record.date}</td>
             <td>${record.time}</td>
+            <td class="${typeClass}">${typeLabel}</td>
         `;
         tbody.appendChild(row);
     });
 }
+
 function updateMissingUsersList(users) {
     const tbody = document.getElementById('missingUsersList');
     tbody.innerHTML = '';
 
-    if (users.length === 0) {
+    if (!users || users.length === 0) {
         const row = document.createElement('tr');
         row.innerHTML = `<td colspan="3" style="text-align:center; color:gray;">Todos os usuários bateram ponto hoje 🎉</td>`;
         tbody.appendChild(row);
         return;
-        
     }
 
     users.forEach(user => {
@@ -76,17 +93,27 @@ function updateMissingUsersList(users) {
     });
 }
 
-// Socket.IO event listeners
+// =====================
+// Eventos Socket.IO
+// =====================
+
+// Conexão inicial
+socket.on('connect', () => {
+    socket.emit('get-records');
+    socket.emit('get-missing-users');
+});
+
+// Novo usuário cadastrado
 socket.on('user-registered', (response) => {
     const messageDiv = document.getElementById('registerMessage');
     messageDiv.textContent = response.message;
     messageDiv.className = 'success';
     
-    // Limpa o formulário e fecha o modal após 1.5 segundos
     setTimeout(() => {
         document.getElementById('registerForm').reset();
         closeModal();
-    }, 500);
+        socket.emit('get-missing-users'); // atualiza lista
+    }, 800);
 });
 
 socket.on('user-register-error', (response) => {
@@ -94,28 +121,34 @@ socket.on('user-register-error', (response) => {
     messageDiv.textContent = response.message;
     messageDiv.className = 'error';
 });
-socket.on('connect', () => {
-    socket.emit('get-records');
-    socket.emit('get-missing-users');
-});
 
-
-// Carrega os registros iniciais
-socket.emit('get-records');
-// Solicita lista de usuários ausentes ao carregar
-socket.emit('get-missing-users');
-
-// Recebe lista e atualiza tabela
-socket.on('missing-users', (users) => {
-    updateMissingUsersList(users);
-});
-
-
-// Atualiza registros em tempo real
+// Atualização em tempo real dos registros
 socket.on('time-records', (records) => {
     updateRecordsList(records);
 });
 
 socket.on('time-registered', (records) => {
     updateRecordsList(records);
+    socket.emit('get-missing-users'); // Atualiza lista de ausentes ao registrar ponto
 });
+
+// Atualização da lista de ausentes
+socket.on('missing-users', (users) => {
+    updateMissingUsersList(users);
+});
+
+// =====================
+// Estilos Visuais
+// =====================
+const style = document.createElement('style');
+style.innerHTML = `
+    td.entrada {
+        color: green;
+        font-weight: bold;
+    }
+    td.saida {
+        color: red;
+        font-weight: bold;
+    }
+`;
+document.head.appendChild(style);

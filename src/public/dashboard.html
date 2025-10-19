@@ -13,8 +13,13 @@
     </header>
     
     <div class="container">
+        <!-- Botão de cadastro -->
         <div class="content-box">
             <button class="btn-open-modal" onclick="openModal()">+ Registrar Novo Usuário</button>
+        </div>
+
+        <!-- Registros de ponto -->
+        <div class="content-box">
             <h2>Registros de Ponto</h2>
             <div class="records-container">
                 <table id="recordsTable">
@@ -23,34 +28,35 @@
                             <th>Nome</th>
                             <th>Data</th>
                             <th>Hora</th>
+                            <th>Tipo</th>
                         </tr>
                     </thead>
-                    <tbody id="recordsList">
-                    </tbody>
+                    <tbody id="recordsList"></tbody>
                 </table>
-                
             </div>
-             <h2>Usuários que ainda não bateram ponto hoje</h2>
-<div class="records-container">
-    <table id="missingUsersTable">
-        <thead>
-            <tr>
-                <th>Nome</th>
-                <th>Horário de Entrada</th>
-                <th>Horário de Saída</th>
-            </tr>
-        </thead>
-        <tbody id="missingUsersList">
-            <tr><td colspan="3" style="text-align:center; color:gray;">Carregando...</td></tr>
-        </tbody>
-    </table>
-</div><br><br>  
-
-
         </div>
 
-        <div class="links">
-            
+        <!-- Usuários que ainda não bateram ponto -->
+        <div class="content-box">
+            <h2>Usuários que ainda não bateram ponto hoje</h2>
+            <div class="records-container">
+                <table id="missingUsersTable">
+                    <thead>
+                        <tr>
+                            <th>Nome</th>
+                            <th>Horário de Entrada</th>
+                            <th>Horário de Saída</th>
+                        </tr>
+                    </thead>
+                    <tbody id="missingUsersList">
+                        <tr>
+                            <td colspan="3" style="text-align:center; color:gray;">
+                                Carregando...
+                            </td>
+                        </tr>
+                    </tbody>
+                </table>
+            </div>
         </div>
     </div>
 
