@@ -53,6 +53,27 @@ function updateRecordsList(records) {
         tbody.appendChild(row);
     });
 }
+function updateMissingUsersList(users) {
+    const tbody = document.getElementById('missingUsersList');
+    tbody.innerHTML = '';
+
+    if (users.length === 0) {
+        const row = document.createElement('tr');
+        row.innerHTML = `<td colspan="3" style="text-align:center; color:gray;">Todos os usuários bateram ponto hoje 🎉</td>`;
+        tbody.appendChild(row);
+        return;
+    }
+
+    users.forEach(user => {
+        const row = document.createElement('tr');
+        row.innerHTML = `
+            <td>${user.name}</td>
+            <td>${user.entry_time}</td>
+            <td>${user.exit_time}</td>
+        `;
+        tbody.appendChild(row);
+    });
+}
 
 // Socket.IO event listeners
 socket.on('user-registered', (response) => {
@@ -64,7 +85,7 @@ socket.on('user-registered', (response) => {
     setTimeout(() => {
         document.getElementById('registerForm').reset();
         closeModal();
-    }, 1500);
+    }, 500);
 });
 
 socket.on('user-register-error', (response) => {
@@ -72,9 +93,22 @@ socket.on('user-register-error', (response) => {
     messageDiv.textContent = response.message;
     messageDiv.className = 'error';
 });
+socket.on('connect', () => {
+    socket.emit('get-records');
+    socket.emit('get-missing-users');
+});
+
 
 // Carrega os registros iniciais
 socket.emit('get-records');
+// Solicita lista de usuários ausentes ao carregar
+socket.emit('get-missing-users');
+
+// Recebe lista e atualiza tabela
+socket.on('missing-users', (users) => {
+    updateMissingUsersList(users);
+});
+
 
 // Atualiza registros em tempo real
 socket.on('time-records', (records) => {
