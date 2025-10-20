@@ -10,6 +10,7 @@ const app = express();
 const server = http.createServer(app);
 const io = socketIO(server);
 
+// Middleware
 app.use(express.json());
 app.use(express.static(path.join(__dirname, 'public')));
 app.use(session({
@@ -20,6 +21,7 @@ app.use(session({
 app.use(passport.initialize());
 app.use(passport.session());
 
+// Banco de dados SQLite
 const db = require('./models/db');
 
 passport.serializeUser((user, done) => {
@@ -31,9 +33,11 @@ passport.deserializeUser((id, done) => {
     });
 });
 
+// === SOCKET.IO ===
 io.on('connection', (socket) => {
-    console.log('User connected');
+    console.log('🔗 Cliente conectado');
 
+    // Registrar novo usuário
     socket.on('register-user', (data) => {
         db.get('SELECT * FROM users WHERE cpf = ?', [data.cpf], (err, row) => {
             if (row) {
@@ -48,16 +52,16 @@ io.on('connection', (socket) => {
                         socket.emit('user-register-error', { message: 'Erro ao registrar usuário!' });
                     } else {
                         socket.emit('user-registered', { message: 'Usuário registrado com sucesso!' });
-                        io.emit('get-missing-users');
                     }
                 }
             );
         });
     });
 
+    // Registrar ponto
     socket.on('register-time', (data) => {
         const date = new Date().toLocaleDateString('pt-BR');
-        const time = new Date().toLocaleTimeString('pt-BR');
+        const time = new Date().toLocaleTimeString('pt-BR', { hour12: false });
 
         db.get('SELECT * FROM users WHERE cpf = ? AND password = ?', [data.cpf, data.password], (err, user) => {
             if (!user) {
@@ -65,21 +69,40 @@ io.on('connection', (socket) => {
                 return;
             }
 
-            // Verifica quantos pontos já foram registrados no dia
             db.all('SELECT * FROM time_records WHERE user_id = ? AND date = ?', [user.id, date], (err, records) => {
                 if (err) {
                     socket.emit('auth-error', { message: 'Erro ao consultar registros!' });
                     return;
                 }
 
+                // Limite de dois pontos por dia
                 if (records.length >= 2) {
                     socket.emit('auth-error', { message: 'Você já registrou seus dois pontos hoje!' });
                     return;
                 }
 
-                // Define o tipo automaticamente
+                // Determina tipo de ponto
                 const type = records.length === 0 ? 'entrada' : 'saida';
 
+                // Se for saída, verifica se está no horário permitido
+                if (type === 'saida') {
+                    const [exitHour, exitMinute] = user.exit_time.split(':').map(Number);
+                    const [currentHour, currentMinute] = time.split(':').map(Number);
+
+                    const currentTotalMinutes = currentHour * 60 + currentMinute;
+                    const exitTotalMinutes = exitHour * 60 + exitMinute;
+
+                    const tolerance = 10; // minutos antes do horário permitido
+
+                    if (currentTotalMinutes < exitTotalMinutes - tolerance) {
+                        socket.emit('auth-error', {
+                            message: `⏰ Você só pode registrar ponto de saída a partir de ${user.exit_time} (tolerância de ${tolerance} minutos).`
+                        });
+                        return;
+                    }
+                }
+
+                // Registrar o ponto (entrada ou saída)
                 db.run(
                     'INSERT INTO time_records (user_id, date, time, type) VALUES (?, ?, ?, ?)',
                     [user.id, date, time, type],
@@ -99,7 +122,7 @@ io.on('connection', (socket) => {
                             }
                         );
 
-                        // Atualiza lista de usuários que não bateram ponto
+                        // Atualiza lista de usuários ausentes
                         db.all('SELECT id, name, entry_time, exit_time FROM users', (err, allUsers) => {
                             db.all('SELECT user_id FROM time_records WHERE date = ?', [date], (err, recs) => {
                                 const usersWithRecords = new Set(recs.map(r => r.user_id));
@@ -113,6 +136,7 @@ io.on('connection', (socket) => {
         });
     });
 
+    // Envia registros do dia atual
     socket.on('get-records', () => {
         const date = new Date().toLocaleDateString('pt-BR');
         db.all(
@@ -124,19 +148,15 @@ io.on('connection', (socket) => {
         );
     });
 
+    // Envia lista de usuários que ainda não bateram ponto
     socket.on('get-missing-users', () => {
         const date = new Date().toLocaleDateString('pt-BR');
+
         db.all('SELECT id, name, entry_time, exit_time FROM users', (err, allUsers) => {
-            if (err) {
-                console.error(err);
-                return;
-            }
+            if (err) return console.error(err);
 
             db.all('SELECT user_id FROM time_records WHERE date = ?', [date], (err, records) => {
-                if (err) {
-                    console.error(err);
-                    return;
-                }
+                if (err) return console.error(err);
 
                 const usersWithRecords = new Set(records.map(r => r.user_id));
                 const usersWithoutRecords = allUsers.filter(u => !usersWithRecords.has(u.id));
@@ -146,6 +166,7 @@ io.on('connection', (socket) => {
     });
 });
 
+// Middleware admin
 function ensureAdmin(req, res, next) {
     if (req.isAuthenticated() && req.user && req.user.is_admin === 1) {
         return next();
@@ -153,6 +174,7 @@ function ensureAdmin(req, res, next) {
     res.redirect('/?auth=fail');
 }
 
+// Rotas
 app.get('/', (req, res) => {
     res.sendFile(path.join(__dirname, 'public', 'index.html'));
 });
@@ -161,6 +183,7 @@ app.get('/dashboard', (req, res) => {
     res.sendFile(path.join(__dirname, 'public', 'dashboard.html'));
 });
 
+// Google OAuth (mantido)
 app.get('/auth/google', passport.authenticate('google', { scope: ['profile', 'email'] }));
 app.get('/auth/google/callback', passport.authenticate('google', {
     failureRedirect: '/?auth=fail'
@@ -170,5 +193,5 @@ app.get('/auth/google/callback', passport.authenticate('google', {
 
 const PORT = process.env.PORT || 3000;
 server.listen(PORT, () => {
-    console.log(`Server running on port ${PORT}`);
+    console.log(`🚀 Servidor rodando na porta ${PORT}`);
 });
