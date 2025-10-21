@@ -22,4 +22,13 @@ Tecnologias usadas:
 
 Como acionar servidor:
 
-1.copiar projeto com git clone ""
+1.copiar projeto com:
+$ git clone https://github.com/papagaiogamer/TCC.git
+
+2.Na pasta com o projeto, abra o terminal e digite:
+$ npm run dev
+
+Após isso, a aplicaçao vai estar funcionando na porta 3000, porta pre-programada.
+
+Para acessar pagina de bater ponto, vá em : localhost:3000/
+Para acessar dashboard, apenas adicione /dashboard 
