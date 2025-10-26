@@ -45,13 +45,18 @@ function submitForm() {
 // =====================
 // Atualização das Tabelas
 // =====================
+
+/* ================================================= */
+/* MODIFICADO: Função 'updateRecordsList' atualizada */
+/* ================================================= */
 function updateRecordsList(records) {
     const tbody = document.getElementById('recordsList');
     tbody.innerHTML = '';
 
     if (!records || records.length === 0) {
         const row = document.createElement('tr');
-        row.innerHTML = `<td colspan="4" style="text-align:center; color:gray;">Nenhum ponto registrado hoje.</td>`;
+        /* MODIFICADO: colspan atualizado de 4 para 5 */
+        row.innerHTML = `<td colspan="5" style="text-align:center; color:gray;">Nenhum ponto registrado hoje.</td>`;
         tbody.appendChild(row);
         return;
     }
@@ -61,15 +66,36 @@ function updateRecordsList(records) {
         const typeClass = record.type === 'entrada' ? 'entrada' : 'saida';
         const typeLabel = record.type === 'entrada' ? 'Entrada' : 'Saída';
 
+        /* NOVO: Lógica para exibir o status */
+        let statusLabel = '—'; // Padrão (para saídas)
+        let statusClass = 'na'; // 'na' = Not Applicable
+
+        if (record.type === 'entrada') {
+            if (record.status === 'atraso') {
+                statusLabel = 'Atraso';
+                statusClass = 'atraso';
+            } else if (record.status === 'no_horario') {
+                statusLabel = 'No horário';
+                statusClass = 'no-horario';
+            }
+        }
+        /* FIM DA NOVA LÓGICA */
+
+        /* MODIFICADO: Adicionada a nova célula de status */
         row.innerHTML = `
             <td>${record.userId}</td>
             <td>${record.date}</td>
             <td>${record.time}</td>
             <td class="${typeClass}">${typeLabel}</td>
+            <td class="${statusClass}">${statusLabel}</td> 
         `;
         tbody.appendChild(row);
     });
 }
+/* ================================================= */
+/* FIM DA MODIFICAÇÃO                                */
+/* ================================================= */
+
 
 function updateMissingUsersList(users) {
     const tbody = document.getElementById('missingUsersList');
@@ -141,6 +167,8 @@ socket.on('missing-users', (users) => {
 // Estilos Visuais
 // =====================
 const style = document.createElement('style');
+
+/* MODIFICADO: Adicionados estilos para o status */
 style.innerHTML = `
     td.entrada {
         color: green;
@@ -149,6 +177,20 @@ style.innerHTML = `
     td.saida {
         color: red;
         font-weight: bold;
+    }
+
+    /* ================== */
+    /* NOVOS ESTILOS      */
+    /* ================== */
+    td.atraso {
+        color: #b35900; /* Laranja escuro */
+        font-weight: bold;
+    }
+    td.no-horario {
+        color: #555;
+    }
+    td.na {
+        color: #999;
     }
 `;
 document.head.appendChild(style);

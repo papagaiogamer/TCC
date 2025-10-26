@@ -84,6 +84,31 @@ io.on('connection', (socket) => {
                 // Determina tipo de ponto
                 const type = records.length === 0 ? 'entrada' : 'saida';
 
+                /* ======================================= */
+                /* NOVO: Lógica de Atraso                  */
+                /* ======================================= */
+                let status = null; // Padrão (nulo para saída)
+                
+                if (type === 'entrada') {
+                    const [entryHour, entryMinute] = user.entry_time.split(':').map(Number);
+                    const [currentHour, currentMinute] = time.split(':').map(Number);
+
+                    const entryTotalMinutes = entryHour * 60 + entryMinute;
+                    const currentTotalMinutes = currentHour * 60 + currentMinute;
+                    
+                    const tolerance = 10; // 10 minutos de tolerância
+
+                    if (currentTotalMinutes > entryTotalMinutes + tolerance) {
+                        status = 'atraso';
+                    } else {
+                        status = 'no_horario';
+                    }
+                }
+                /* ======================================= */
+                /* FIM DA NOVA LÓGICA                      */
+                /* ======================================= */
+
+
                 // Se for saída, verifica se está no horário permitido
                 if (type === 'saida') {
                     const [exitHour, exitMinute] = user.exit_time.split(':').map(Number);
@@ -104,8 +129,9 @@ io.on('connection', (socket) => {
 
                 // Registrar o ponto (entrada ou saída)
                 db.run(
-                    'INSERT INTO time_records (user_id, date, time, type) VALUES (?, ?, ?, ?)',
-                    [user.id, date, time, type],
+                    /* MODIFICADO: Adicionado 'status' no INSERT */
+                    'INSERT INTO time_records (user_id, date, time, type, status) VALUES (?, ?, ?, ?, ?)',
+                    [user.id, date, time, type, status], /* MODIFICADO: Adicionado 'status' aqui */
                     function (err) {
                         if (err) {
                             socket.emit('auth-error', { message: 'Erro ao registrar ponto!' });
@@ -114,7 +140,8 @@ io.on('connection', (socket) => {
 
                         // Atualiza registros do dia
                         db.all(
-                            'SELECT tr.date, tr.time, tr.type, u.name as userId FROM time_records tr JOIN users u ON tr.user_id = u.id WHERE tr.date = ?',
+                            /* MODIFICADO: Adicionado 'tr.status' no SELECT */
+                            'SELECT tr.date, tr.time, tr.type, tr.status, u.name as userId FROM time_records tr JOIN users u ON tr.user_id = u.id WHERE tr.date = ?',
                             [date],
                             (err, records) => {
                                 io.emit('time-registered', records);
@@ -140,7 +167,8 @@ io.on('connection', (socket) => {
     socket.on('get-records', () => {
         const date = new Date().toLocaleDateString('pt-BR');
         db.all(
-            'SELECT tr.date, tr.time, tr.type, u.name as userId FROM time_records tr JOIN users u ON tr.user_id = u.id WHERE tr.date = ?',
+            /* MODIFICADO: Adicionado 'tr.status' no SELECT */
+            'SELECT tr.date, tr.time, tr.type, tr.status, u.name as userId FROM time_records tr JOIN users u ON tr.user_id = u.id WHERE tr.date = ?',
             [date],
             (err, records) => {
                 socket.emit('time-records', records);
