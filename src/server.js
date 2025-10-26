@@ -10,7 +10,8 @@ const app = express();
 const server = http.createServer(app);
 const io = socketIO(server);
 
-// Middleware
+// Middleware (etc...)
+// ... (todo o código de middleware, passport, etc. permanece o mesmo)
 app.use(express.json());
 app.use(express.static(path.join(__dirname, 'public')));
 app.use(session({
@@ -33,11 +34,18 @@ passport.deserializeUser((id, done) => {
     });
 });
 
+/* Helper function para calcular tempo */
+function parseTimeToMinutes(timeStr) {
+    const [hours, minutes] = timeStr.split(':').map(Number);
+    return (hours * 60) + minutes;
+}
+
 // === SOCKET.IO ===
 io.on('connection', (socket) => {
     console.log('🔗 Cliente conectado');
 
     // Registrar novo usuário
+    // ... (evento 'register-user' permanece o mesmo)
     socket.on('register-user', (data) => {
         db.get('SELECT * FROM users WHERE cpf = ?', [data.cpf], (err, row) => {
             if (row) {
@@ -59,6 +67,7 @@ io.on('connection', (socket) => {
     });
 
     // Registrar ponto
+    // ... (evento 'register-time' permanece o mesmo)
     socket.on('register-time', (data) => {
         const date = new Date().toLocaleDateString('pt-BR');
         const time = new Date().toLocaleTimeString('pt-BR', { hour12: false });
@@ -75,28 +84,21 @@ io.on('connection', (socket) => {
                     return;
                 }
 
-                // Limite de dois pontos por dia
                 if (records.length >= 2) {
                     socket.emit('auth-error', { message: 'Você já registrou seus dois pontos hoje!' });
                     return;
                 }
 
-                // Determina tipo de ponto
                 const type = records.length === 0 ? 'entrada' : 'saida';
-
-                /* ======================================= */
-                /* NOVO: Lógica de Atraso                  */
-                /* ======================================= */
-                let status = null; // Padrão (nulo para saída)
+                let status = null; 
+                let workDuration = null; 
                 
                 if (type === 'entrada') {
                     const [entryHour, entryMinute] = user.entry_time.split(':').map(Number);
                     const [currentHour, currentMinute] = time.split(':').map(Number);
-
                     const entryTotalMinutes = entryHour * 60 + entryMinute;
                     const currentTotalMinutes = currentHour * 60 + currentMinute;
-                    
-                    const tolerance = 10; // 10 minutos de tolerância
+                    const tolerance = 10; 
 
                     if (currentTotalMinutes > entryTotalMinutes + tolerance) {
                         status = 'atraso';
@@ -104,20 +106,13 @@ io.on('connection', (socket) => {
                         status = 'no_horario';
                     }
                 }
-                /* ======================================= */
-                /* FIM DA NOVA LÓGICA                      */
-                /* ======================================= */
 
-
-                // Se for saída, verifica se está no horário permitido
                 if (type === 'saida') {
                     const [exitHour, exitMinute] = user.exit_time.split(':').map(Number);
                     const [currentHour, currentMinute] = time.split(':').map(Number);
-
                     const currentTotalMinutes = currentHour * 60 + currentMinute;
                     const exitTotalMinutes = exitHour * 60 + exitMinute;
-
-                    const tolerance = 10; // minutos antes do horário permitido
+                    const tolerance = 10; 
 
                     if (currentTotalMinutes < exitTotalMinutes - tolerance) {
                         socket.emit('auth-error', {
@@ -125,23 +120,26 @@ io.on('connection', (socket) => {
                         });
                         return;
                     }
+                    
+                    const entryRecord = records[0];
+                    if (entryRecord && entryRecord.type === 'entrada') {
+                        const entryTimeInMinutes = parseTimeToMinutes(entryRecord.time);
+                        const exitTimeInMinutes = parseTimeToMinutes(time);
+                        workDuration = exitTimeInMinutes - entryTimeInMinutes; 
+                    }
                 }
 
-                // Registrar o ponto (entrada ou saída)
                 db.run(
-                    /* MODIFICADO: Adicionado 'status' no INSERT */
-                    'INSERT INTO time_records (user_id, date, time, type, status) VALUES (?, ?, ?, ?, ?)',
-                    [user.id, date, time, type, status], /* MODIFICADO: Adicionado 'status' aqui */
+                    'INSERT INTO time_records (user_id, date, time, type, status, work_duration) VALUES (?, ?, ?, ?, ?, ?)',
+                    [user.id, date, time, type, status, workDuration], 
                     function (err) {
                         if (err) {
                             socket.emit('auth-error', { message: 'Erro ao registrar ponto!' });
                             return;
                         }
 
-                        // Atualiza registros do dia
                         db.all(
-                            /* MODIFICADO: Adicionado 'tr.status' no SELECT */
-                            'SELECT tr.date, tr.time, tr.type, tr.status, u.name as userId FROM time_records tr JOIN users u ON tr.user_id = u.id WHERE tr.date = ?',
+                            'SELECT tr.date, tr.time, tr.type, tr.status, tr.work_duration, u.name as userId FROM time_records tr JOIN users u ON tr.user_id = u.id WHERE tr.date = ?',
                             [date],
                             (err, records) => {
                                 io.emit('time-registered', records);
@@ -149,7 +147,6 @@ io.on('connection', (socket) => {
                             }
                         );
 
-                        // Atualiza lista de usuários ausentes
                         db.all('SELECT id, name, entry_time, exit_time FROM users', (err, allUsers) => {
                             db.all('SELECT user_id FROM time_records WHERE date = ?', [date], (err, recs) => {
                                 const usersWithRecords = new Set(recs.map(r => r.user_id));
@@ -163,12 +160,11 @@ io.on('connection', (socket) => {
         });
     });
 
-    // Envia registros do dia atual
+    // Envia registros do dia atual (ao carregar a página)
     socket.on('get-records', () => {
         const date = new Date().toLocaleDateString('pt-BR');
         db.all(
-            /* MODIFICADO: Adicionado 'tr.status' no SELECT */
-            'SELECT tr.date, tr.time, tr.type, tr.status, u.name as userId FROM time_records tr JOIN users u ON tr.user_id = u.id WHERE tr.date = ?',
+            'SELECT tr.date, tr.time, tr.type, tr.status, tr.work_duration, u.name as userId FROM time_records tr JOIN users u ON tr.user_id = u.id WHERE tr.date = ?',
             [date],
             (err, records) => {
                 socket.emit('time-records', records);
@@ -176,33 +172,65 @@ io.on('connection', (socket) => {
         );
     });
 
-    // Envia lista de usuários que ainda não bateram ponto
+    // Envia lista de usuários ausentes (ao carregar a página)
     socket.on('get-missing-users', () => {
         const date = new Date().toLocaleDateString('pt-BR');
 
         db.all('SELECT id, name, entry_time, exit_time FROM users', (err, allUsers) => {
             if (err) return console.error(err);
-
             db.all('SELECT user_id FROM time_records WHERE date = ?', [date], (err, records) => {
                 if (err) return console.error(err);
-
                 const usersWithRecords = new Set(records.map(r => r.user_id));
                 const usersWithoutRecords = allUsers.filter(u => !usersWithRecords.has(u.id));
                 socket.emit('missing-users', usersWithoutRecords);
             });
         });
     });
+
+    /* ======================================= */
+    /* NOVO: Evento para buscar o histórico    */
+    /* ======================================= */
+    socket.on('get-history', (data) => {
+        // O input type="date" envia data como 'YYYY-MM-DD'
+        // Precisamos converter para 'DD/MM/YYYY' que é como salvamos no DB
+        if (!data.date) {
+            return; // Ignora se a data for inválida
+        }
+        const [year, month, day] = data.date.split('-');
+        const formattedDate = `${day}/${month}/${year}`;
+
+        // 1. Busca os registros de ponto da data solicitada
+        db.all(
+            'SELECT tr.date, tr.time, tr.type, tr.status, tr.work_duration, u.name as userId FROM time_records tr JOIN users u ON tr.user_id = u.id WHERE tr.date = ?',
+            [formattedDate],
+            (err, records) => {
+                if (err) return;
+                // Envia os registros encontrados para a tabela (mesmo evento 'time-records')
+                socket.emit('time-records', records);
+            }
+        );
+
+        // 2. Busca os usuários ausentes da data solicitada
+        db.all('SELECT id, name, entry_time, exit_time FROM users', (err, allUsers) => {
+            if (err) return;
+            
+            db.all('SELECT user_id FROM time_records WHERE date = ?', [formattedDate], (err, records) => {
+                if (err) return;
+                
+                const usersWithRecords = new Set(records.map(r => r.user_id));
+                const usersWithoutRecords = allUsers.filter(u => !usersWithRecords.has(u.id));
+                
+                // Envia os ausentes para a tabela (mesmo evento 'missing-users')
+                socket.emit('missing-users', usersWithoutRecords);
+            });
+        });
+    });
+    /* ======================================= */
+
 });
 
-// Middleware admin
-function ensureAdmin(req, res, next) {
-    if (req.isAuthenticated() && req.user && req.user.is_admin === 1) {
-        return next();
-    }
-    res.redirect('/?auth=fail');
-}
-
 // Rotas
+// ... (todas as rotas app.get('/') etc. permanecem as mesmas)
 app.get('/', (req, res) => {
     res.sendFile(path.join(__dirname, 'public', 'index.html'));
 });
