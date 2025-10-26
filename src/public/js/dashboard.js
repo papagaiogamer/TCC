@@ -42,6 +42,24 @@ function submitForm() {
     socket.emit('register-user', newUser);
 }
 
+/* ================================================= */
+/* NOVO: Helper function para formatar a duração     */
+/* ================================================= */
+function formatDuration(totalMinutes) {
+    if (totalMinutes === null || totalMinutes === undefined) {
+        return '—';
+    }
+    const hours = Math.floor(totalMinutes / 60);
+    const minutes = totalMinutes % 60;
+    
+    // Formata os minutos para sempre terem dois dígitos (ex: 8h 05m)
+    const paddedMinutes = String(minutes).padStart(2, '0');
+    
+    return `${hours}h ${paddedMinutes}m`;
+}
+/* ================================================= */
+
+
 // =====================
 // Atualização das Tabelas
 // =====================
@@ -55,8 +73,8 @@ function updateRecordsList(records) {
 
     if (!records || records.length === 0) {
         const row = document.createElement('tr');
-        /* MODIFICADO: colspan atualizado de 4 para 5 */
-        row.innerHTML = `<td colspan="5" style="text-align:center; color:gray;">Nenhum ponto registrado hoje.</td>`;
+        /* MODIFICADO: colspan atualizado de 5 para 6 */
+        row.innerHTML = `<td colspan="6" style="text-align:center; color:gray;">Nenhum ponto registrado hoje.</td>`;
         tbody.appendChild(row);
         return;
     }
@@ -66,10 +84,9 @@ function updateRecordsList(records) {
         const typeClass = record.type === 'entrada' ? 'entrada' : 'saida';
         const typeLabel = record.type === 'entrada' ? 'Entrada' : 'Saída';
 
-        /* NOVO: Lógica para exibir o status */
-        let statusLabel = '—'; // Padrão (para saídas)
-        let statusClass = 'na'; // 'na' = Not Applicable
-
+        // Lógica para exibir o status
+        let statusLabel = '—';
+        let statusClass = 'na'; 
         if (record.type === 'entrada') {
             if (record.status === 'atraso') {
                 statusLabel = 'Atraso';
@@ -79,15 +96,20 @@ function updateRecordsList(records) {
                 statusClass = 'no-horario';
             }
         }
-        /* FIM DA NOVA LÓGICA */
+        
+        /* NOVO: Formata a duração da jornada */
+        // A duração só é calculada no registro de 'saida'
+        const durationLabel = record.type === 'saida' ? formatDuration(record.work_duration) : '—';
+        const durationClass = record.type === 'saida' ? 'duration' : 'na';
 
-        /* MODIFICADO: Adicionada a nova célula de status */
+        /* MODIFICADO: Adicionada a nova célula de jornada (durationLabel) */
         row.innerHTML = `
             <td>${record.userId}</td>
             <td>${record.date}</td>
             <td>${record.time}</td>
             <td class="${typeClass}">${typeLabel}</td>
             <td class="${statusClass}">${statusLabel}</td> 
+            <td class="${durationClass}">${durationLabel}</td>
         `;
         tbody.appendChild(row);
     });
@@ -168,7 +190,7 @@ socket.on('missing-users', (users) => {
 // =====================
 const style = document.createElement('style');
 
-/* MODIFICADO: Adicionados estilos para o status */
+/* MODIFICADO: Adicionados estilos para a jornada (duration) */
 style.innerHTML = `
     td.entrada {
         color: green;
@@ -179,9 +201,6 @@ style.innerHTML = `
         font-weight: bold;
     }
 
-    /* ================== */
-    /* NOVOS ESTILOS      */
-    /* ================== */
     td.atraso {
         color: #b35900; /* Laranja escuro */
         font-weight: bold;
@@ -191,6 +210,14 @@ style.innerHTML = `
     }
     td.na {
         color: #999;
+    }
+
+    /* ================== */
+    /* NOVO ESTILO        */
+    /* ================== */
+    td.duration {
+        font-weight: bold;
+        color: #0969da; /* Azul (cor de acento) */
     }
 `;
 document.head.appendChild(style);

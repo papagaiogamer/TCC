@@ -33,6 +33,16 @@ passport.deserializeUser((id, done) => {
     });
 });
 
+/* ======================================= */
+/* NOVO: Helper function para calcular tempo */
+/* ======================================= */
+function parseTimeToMinutes(timeStr) {
+    // timeStr está no formato "HH:MM:SS"
+    const [hours, minutes] = timeStr.split(':').map(Number);
+    return (hours * 60) + minutes;
+}
+/* ======================================= */
+
 // === SOCKET.IO ===
 io.on('connection', (socket) => {
     console.log('🔗 Cliente conectado');
@@ -84,19 +94,18 @@ io.on('connection', (socket) => {
                 // Determina tipo de ponto
                 const type = records.length === 0 ? 'entrada' : 'saida';
 
-                /* ======================================= */
-                /* NOVO: Lógica de Atraso                  */
-                /* ======================================= */
-                let status = null; // Padrão (nulo para saída)
+                
+                let status = null;
+                /* NOVO: Inicializa a duração do trabalho */
+                let workDuration = null; 
                 
                 if (type === 'entrada') {
+                    // Lógica de Atraso
                     const [entryHour, entryMinute] = user.entry_time.split(':').map(Number);
                     const [currentHour, currentMinute] = time.split(':').map(Number);
-
                     const entryTotalMinutes = entryHour * 60 + entryMinute;
                     const currentTotalMinutes = currentHour * 60 + currentMinute;
-                    
-                    const tolerance = 10; // 10 minutos de tolerância
+                    const tolerance = 10; 
 
                     if (currentTotalMinutes > entryTotalMinutes + tolerance) {
                         status = 'atraso';
@@ -104,20 +113,15 @@ io.on('connection', (socket) => {
                         status = 'no_horario';
                     }
                 }
-                /* ======================================= */
-                /* FIM DA NOVA LÓGICA                      */
-                /* ======================================= */
 
-
-                // Se for saída, verifica se está no horário permitido
+                // Se for saída, verifica o horário e calcula a jornada
                 if (type === 'saida') {
+                    // 1. Verifica horário permitido
                     const [exitHour, exitMinute] = user.exit_time.split(':').map(Number);
                     const [currentHour, currentMinute] = time.split(':').map(Number);
-
                     const currentTotalMinutes = currentHour * 60 + currentMinute;
                     const exitTotalMinutes = exitHour * 60 + exitMinute;
-
-                    const tolerance = 10; // minutos antes do horário permitido
+                    const tolerance = 10; 
 
                     if (currentTotalMinutes < exitTotalMinutes - tolerance) {
                         socket.emit('auth-error', {
@@ -125,13 +129,24 @@ io.on('connection', (socket) => {
                         });
                         return;
                     }
+                    
+                    /* =============================================== */
+                    /* NOVO: Lógica de Cálculo de Jornada              */
+                    /* =============================================== */
+                    const entryRecord = records[0];
+                    if (entryRecord && entryRecord.type === 'entrada') {
+                        const entryTimeInMinutes = parseTimeToMinutes(entryRecord.time);
+                        const exitTimeInMinutes = parseTimeToMinutes(time);
+                        workDuration = exitTimeInMinutes - entryTimeInMinutes; // Duração em minutos
+                    }
+                    /* =============================================== */
                 }
 
-                // Registrar o ponto (entrada ou saída)
+                // Registrar o ponto
                 db.run(
-                    /* MODIFICADO: Adicionado 'status' no INSERT */
-                    'INSERT INTO time_records (user_id, date, time, type, status) VALUES (?, ?, ?, ?, ?)',
-                    [user.id, date, time, type, status], /* MODIFICADO: Adicionado 'status' aqui */
+                    /* MODIFICADO: Adicionado 'work_duration' no INSERT */
+                    'INSERT INTO time_records (user_id, date, time, type, status, work_duration) VALUES (?, ?, ?, ?, ?, ?)',
+                    [user.id, date, time, type, status, workDuration], /* MODIFICADO: Adicionado 'workDuration' aqui */
                     function (err) {
                         if (err) {
                             socket.emit('auth-error', { message: 'Erro ao registrar ponto!' });
@@ -140,8 +155,8 @@ io.on('connection', (socket) => {
 
                         // Atualiza registros do dia
                         db.all(
-                            /* MODIFICADO: Adicionado 'tr.status' no SELECT */
-                            'SELECT tr.date, tr.time, tr.type, tr.status, u.name as userId FROM time_records tr JOIN users u ON tr.user_id = u.id WHERE tr.date = ?',
+                            /* MODIFICADO: Adicionado 'tr.work_duration' no SELECT */
+                            'SELECT tr.date, tr.time, tr.type, tr.status, tr.work_duration, u.name as userId FROM time_records tr JOIN users u ON tr.user_id = u.id WHERE tr.date = ?',
                             [date],
                             (err, records) => {
                                 io.emit('time-registered', records);
@@ -167,8 +182,8 @@ io.on('connection', (socket) => {
     socket.on('get-records', () => {
         const date = new Date().toLocaleDateString('pt-BR');
         db.all(
-            /* MODIFICADO: Adicionado 'tr.status' no SELECT */
-            'SELECT tr.date, tr.time, tr.type, tr.status, u.name as userId FROM time_records tr JOIN users u ON tr.user_id = u.id WHERE tr.date = ?',
+            /* MODIFICADO: Adicionado 'tr.work_duration' no SELECT */
+            'SELECT tr.date, tr.time, tr.type, tr.status, tr.work_duration, u.name as userId FROM time_records tr JOIN users u ON tr.user_id = u.id WHERE tr.date = ?',
             [date],
             (err, records) => {
                 socket.emit('time-records', records);
