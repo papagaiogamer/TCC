@@ -13,12 +13,10 @@
     </header>
     
     <div class="container">
-        <!-- Botão de cadastro -->
         <div class="content-box">
             <button class="btn-open-modal" onclick="openModal()">+ Registrar Novo Usuário</button>
         </div>
 
-        <!-- Registros de ponto -->
         <div class="content-box">
             <h2>Registros de Ponto</h2>
             <div class="records-container">
@@ -29,14 +27,13 @@
                             <th>Data</th>
                             <th>Hora</th>
                             <th>Tipo</th>
-                        </tr>
+                            <th>Status</th> </tr>
                     </thead>
                     <tbody id="recordsList"></tbody>
                 </table>
             </div>
         </div>
 
-        <!-- Usuários que ainda não bateram ponto -->
         <div class="content-box">
             <h2>Usuários que ainda não bateram ponto hoje</h2>
             <div class="records-container">
@@ -60,7 +57,6 @@
         </div>
     </div>
 
-    <!-- Modal de Registro -->
     <div class="modal-overlay" id="modalOverlay"></div>
     <div class="modal" id="registerModal">
         <div class="modal-header">

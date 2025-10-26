@@ -25,6 +25,7 @@ const createTables = () => {
         date TEXT NOT NULL,
         time TEXT NOT NULL,
         type TEXT CHECK(type IN ('entrada', 'saida')) NOT NULL DEFAULT 'entrada',
+        status TEXT DEFAULT NULL, /* <-- COLUNA ADICIONADA */
         FOREIGN KEY(user_id) REFERENCES users(id)
     )`, (err) => {
         if (err) {
