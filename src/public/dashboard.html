@@ -18,7 +18,14 @@
         </div>
 
         <div class="content-box">
-            <h2>Registros de Ponto</h2>
+            <div class="form-group">
+                <label for="historyDate">Consultar Histórico por Data:</label>
+                <input type="date" id="historyDate" class="input-date">
+            </div>
+            <button id="btnResetDate" class="secondary" style="display: none;">Ver Registros de Hoje</button>
+        </div>
+        <div class="content-box">
+            <h2 id="recordsTitle">Registros de Ponto (Hoje)</h2>
             <div class="records-container">
                 <table id="recordsTable">
                     <thead>
@@ -28,7 +35,8 @@
                             <th>Hora</th>
                             <th>Tipo</th>
                             <th>Status</th>
-                            <th>Jornada</th> </tr>
+                            <th>Jornada</th>
+                        </tr>
                     </thead>
                     <tbody id="recordsList"></tbody>
                 </table>
@@ -36,7 +44,7 @@
         </div>
 
         <div class="content-box">
-            <h2>Usuários que ainda não bateram ponto hoje</h2>
+             <h2 id="missingTitle">Usuários que ainda não bateram ponto (Hoje)</h2>
             <div class="records-container">
                 <table id="missingUsersTable">
                     <thead>

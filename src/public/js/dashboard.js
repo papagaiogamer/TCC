@@ -42,39 +42,76 @@ function submitForm() {
     socket.emit('register-user', newUser);
 }
 
-/* ================================================= */
-/* NOVO: Helper function para formatar a duração     */
-/* ================================================= */
+// =================================================
+// NOVO: Helpers de Data e Carregamento de Dados
+// =================================================
+
+// Retorna a data de hoje formatada como 'YYYY-MM-DD'
+function getTodayYYYYMMDD() {
+    const today = new Date();
+    const y = today.getFullYear();
+    const m = String(today.getMonth() + 1).padStart(2, '0');
+    const d = String(today.getDate()).padStart(2, '0');
+    return `${y}-${m}-${d}`;
+}
+
+// Retorna a data formatada como 'DD/MM/YYYY'
+function formatToDDMMYYYY(dateStr) {
+    const [year, month, day] = dateStr.split('-');
+    return `${day}/${month}/${year}`;
+}
+
+// Função central para carregar dados (Hoje ou Histórico)
+function loadDataForDate(dateStr) {
+    const recordsTitle = document.getElementById('recordsTitle');
+    const missingTitle = document.getElementById('missingTitle');
+    const btnReset = document.getElementById('btnResetDate');
+    const dateInput = document.getElementById('historyDate');
+
+    if (!dateStr || dateStr === getTodayYYYYMMDD()) {
+        // Carrega dados de HOJE
+        recordsTitle.textContent = 'Registros de Ponto (Hoje)';
+        missingTitle.textContent = 'Usuários que ainda não bateram ponto (Hoje)';
+        btnReset.style.display = 'none'; // Esconde o botão de resetar
+        if (dateInput.value !== getTodayYYYYMMDD()) {
+            dateInput.value = ''; // Limpa o input se estamos vendo hoje
+        }
+        
+        socket.emit('get-records');
+        socket.emit('get-missing-users');
+    } else {
+        // Carrega HISTÓRICO
+        const displayDate = formatToDDMMYYYY(dateStr);
+        recordsTitle.textContent = `Registros de Ponto (${displayDate})`;
+        missingTitle.textContent = `Usuários que não bateram ponto (${displayDate})`;
+        btnReset.style.display = 'inline-block'; // Mostra o botão de resetar
+        
+        socket.emit('get-history', { date: dateStr });
+    }
+}
+
+// =====================
+// Funções de Formatação e Atualização de Tabelas
+// =====================
+
 function formatDuration(totalMinutes) {
     if (totalMinutes === null || totalMinutes === undefined) {
         return '—';
     }
     const hours = Math.floor(totalMinutes / 60);
     const minutes = totalMinutes % 60;
-    
-    // Formata os minutos para sempre terem dois dígitos (ex: 8h 05m)
     const paddedMinutes = String(minutes).padStart(2, '0');
-    
     return `${hours}h ${paddedMinutes}m`;
 }
-/* ================================================= */
 
-
-// =====================
-// Atualização das Tabelas
-// =====================
-
-/* ================================================= */
-/* MODIFICADO: Função 'updateRecordsList' atualizada */
-/* ================================================= */
 function updateRecordsList(records) {
     const tbody = document.getElementById('recordsList');
     tbody.innerHTML = '';
 
     if (!records || records.length === 0) {
         const row = document.createElement('tr');
-        /* MODIFICADO: colspan atualizado de 5 para 6 */
-        row.innerHTML = `<td colspan="6" style="text-align:center; color:gray;">Nenhum ponto registrado hoje.</td>`;
+        /* MODIFICADO: colspan atualizado para 6 */
+        row.innerHTML = `<td colspan="6" style="text-align:center; color:gray;">Nenhum ponto registrado na data selecionada.</td>`;
         tbody.appendChild(row);
         return;
     }
@@ -84,7 +121,6 @@ function updateRecordsList(records) {
         const typeClass = record.type === 'entrada' ? 'entrada' : 'saida';
         const typeLabel = record.type === 'entrada' ? 'Entrada' : 'Saída';
 
-        // Lógica para exibir o status
         let statusLabel = '—';
         let statusClass = 'na'; 
         if (record.type === 'entrada') {
@@ -97,12 +133,9 @@ function updateRecordsList(records) {
             }
         }
         
-        /* NOVO: Formata a duração da jornada */
-        // A duração só é calculada no registro de 'saida'
         const durationLabel = record.type === 'saida' ? formatDuration(record.work_duration) : '—';
         const durationClass = record.type === 'saida' ? 'duration' : 'na';
 
-        /* MODIFICADO: Adicionada a nova célula de jornada (durationLabel) */
         row.innerHTML = `
             <td>${record.userId}</td>
             <td>${record.date}</td>
@@ -114,10 +147,6 @@ function updateRecordsList(records) {
         tbody.appendChild(row);
     });
 }
-/* ================================================= */
-/* FIM DA MODIFICAÇÃO                                */
-/* ================================================= */
-
 
 function updateMissingUsersList(users) {
     const tbody = document.getElementById('missingUsersList');
@@ -125,7 +154,7 @@ function updateMissingUsersList(users) {
 
     if (!users || users.length === 0) {
         const row = document.createElement('tr');
-        row.innerHTML = `<td colspan="3" style="text-align:center; color:gray;">Todos os usuários bateram ponto hoje 🎉</td>`;
+        row.innerHTML = `<td colspan="3" style="text-align:center; color:gray;">Todos os usuários bateram ponto na data selecionada 🎉</td>`;
         tbody.appendChild(row);
         return;
     }
@@ -147,8 +176,8 @@ function updateMissingUsersList(users) {
 
 // Conexão inicial
 socket.on('connect', () => {
-    socket.emit('get-records');
-    socket.emit('get-missing-users');
+    // MODIFICADO: Carrega os dados de hoje usando a nova função
+    loadDataForDate(null); 
 });
 
 // Novo usuário cadastrado
@@ -160,7 +189,8 @@ socket.on('user-registered', (response) => {
     setTimeout(() => {
         document.getElementById('registerForm').reset();
         closeModal();
-        socket.emit('get-missing-users'); // atualiza lista
+        // Recarrega os dados da data atual (para atualizar lista de ausentes)
+        loadDataForDate(document.getElementById('historyDate').value); 
     }, 800);
 });
 
@@ -172,25 +202,46 @@ socket.on('user-register-error', (response) => {
 
 // Atualização em tempo real dos registros
 socket.on('time-records', (records) => {
+    // Este evento agora é usado tanto para 'hoje' quanto para 'histórico'
     updateRecordsList(records);
 });
 
 socket.on('time-registered', (records) => {
-    updateRecordsList(records);
-    socket.emit('get-missing-users'); // Atualiza lista de ausentes ao registrar ponto
+    // Este evento só dispara quando ALGUÉM BATE O PONTO (não no histórico)
+    const dateInput = document.getElementById('historyDate');
+    
+    // Só atualiza em tempo real se o usuário estiver vendo os dados de HOJE
+    if (!dateInput.value || dateInput.value === getTodayYYYYMMDD()) {
+        updateRecordsList(records);
+        socket.emit('get-missing-users'); // Atualiza lista de ausentes
+    }
 });
 
 // Atualização da lista de ausentes
 socket.on('missing-users', (users) => {
+    // Este evento agora é usado tanto para 'hoje' quanto para 'histórico'
     updateMissingUsersList(users);
+});
+
+// ==========================================
+// NOVO: Event Listeners para Histórico
+// ==========================================
+document.getElementById('historyDate').addEventListener('change', (e) => {
+    const selectedDate = e.target.value;
+    if (selectedDate) {
+        loadDataForDate(selectedDate);
+    }
+});
+
+document.getElementById('btnResetDate').addEventListener('click', () => {
+    // Carrega os dados de hoje
+    loadDataForDate(null);
 });
 
 // =====================
 // Estilos Visuais
 // =====================
 const style = document.createElement('style');
-
-/* MODIFICADO: Adicionados estilos para a jornada (duration) */
 style.innerHTML = `
     td.entrada {
         color: green;
@@ -200,7 +251,6 @@ style.innerHTML = `
         color: red;
         font-weight: bold;
     }
-
     td.atraso {
         color: #b35900; /* Laranja escuro */
         font-weight: bold;
@@ -211,13 +261,27 @@ style.innerHTML = `
     td.na {
         color: #999;
     }
-
-    /* ================== */
-    /* NOVO ESTILO        */
-    /* ================== */
     td.duration {
         font-weight: bold;
-        color: #0969da; /* Azul (cor de acento) */
+        color: #0969da; /* Azul */
+    }
+
+    /* NOVO: Estilo para o input de data */
+    .input-date {
+        /* Reutiliza o estilo dos inputs normais */
+        width: 100%;
+        padding: 6px 12px;
+        font-size: 14px;
+        border: 1px solid var(--color-border-default);
+        border-radius: 6px;
+        background-color: var(--color-canvas-default);
+        box-shadow: var(--color-primer-shadow-inset);
+        transition: border-color 0.15s, box-shadow 0.15s;
+    }
+    .input-date:focus {
+        border-color: var(--color-accent-fg);
+        outline: none;
+        box-shadow: 0 0 0 3px rgba(9,105,218,0.3);
     }
 `;
 document.head.appendChild(style);
