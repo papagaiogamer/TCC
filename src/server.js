@@ -9,7 +9,6 @@ const db = require('./models/db');
 const app = express();
 const server = http.createServer(app);
 
-// Configuração do CORS
 const io = socketIO(server, {
     cors: { origin: "http://localhost:5173", methods: ["GET", "POST"] }
 });
@@ -39,13 +38,13 @@ db.get("SELECT count(*) as count FROM users", async (err, row) => {
 io.on('connection', (socket) => {
     console.log('🔗 Conectado:', socket.id);
 
-    // --- FUNÇÕES DE ENVIO ---
+    // Envia registros do dia (Tabela de cima do Dashboard)
     const sendTodayRecords = () => {
         const today = getFmtDate();
         db.all('SELECT tr.*, u.name as userId, u.role FROM time_records tr JOIN users u ON tr.user_id = u.id WHERE tr.date = ?', [today], (err, r) => io.emit('time-records', r || []));
     };
 
-    // --- REGISTRO DE PONTO (4 BATIDAS) ---
+    // --- REGISTRO DE PONTO ---
     socket.on('register-time', (data) => {
         const date = getFmtDate();
         const nowObj = new Date();
@@ -60,7 +59,10 @@ io.on('connection', (socket) => {
 
             if (user.role !== 'visitor') {
                 db.get('SELECT * FROM user_schedules WHERE user_id = ? AND day_of_week = ?', [user.id, dayWeek], (err, sched) => {
-                    if (!sched || !sched.entry_time) return socket.emit('auth-error', { message: 'Você não trabalha hoje.' });
+                    // Verifica se tem horário e se entry_time não está vazio
+                    if (!sched || !sched.entry_time || sched.entry_time.trim() === '') {
+                        return socket.emit('auth-error', { message: 'Você não tem horário agendado para hoje.' });
+                    }
                     processPonto(user, sched);
                 });
             } else {
@@ -72,7 +74,6 @@ io.on('connection', (socket) => {
                     const count = recs.length;
                     let type, status = 'no_horario', duration = null;
 
-                    // Lógica 4 Pontos
                     if (count === 0) {
                         type = 'entrada';
                         if (sched && parseTime(time) > parseTime(sched.entry_time) + 10) status = 'atraso';
@@ -106,7 +107,7 @@ io.on('connection', (socket) => {
         });
     });
 
-    // --- CADASTRO & UPDATE ---
+    // --- CADASTRO E UPDATE ---
     socket.on('register-user', async (data) => {
         db.get('SELECT * FROM users WHERE cpf = ?', [data.cpf], async (err, row) => {
             if (row) return socket.emit('user-register-error', {message: 'CPF já existe.'});
@@ -145,78 +146,91 @@ io.on('connection', (socket) => {
         });
     });
 
-    // --- LEITURAS & HISTÓRICO COM DEBUG ---
+    // --- LEITURAS ---
     socket.on('get-records', sendTodayRecords);
-
     socket.on('get-employees', () => db.all('SELECT id,name,cpf,cargo,role FROM users', (err,r)=>socket.emit('employees-list', r||[])));
-
     socket.on('get-employee-details', (d) => {
         db.get('SELECT * FROM users WHERE id=?',[d.id],(e,u)=>{
             if(u) db.all('SELECT * FROM user_schedules WHERE user_id=?',[d.id],(e,s)=>socket.emit('employee-details',{user:u, schedule:s}));
         });
     });
 
-    // 1. DASHBOARD (HOJE) - FALTAS
-    socket.on('get-missing-users', () => {
-        const today = getFmtDate();
-        const dayWeek = new Date().getDay();
-        
-        console.log(`🔎 Dashboard: Buscando faltas para HOJE (${today}), Dia da semana: ${dayWeek}`);
+    // ==========================================
+    // LOGICA DE AUSENTES / HISTÓRICO (CORRIGIDA)
+    // ==========================================
 
-        const q = `SELECT u.id, u.name, s.entry_time, s.exit_time 
-                   FROM users u 
-                   JOIN user_schedules s ON u.id = s.user_id 
-                   WHERE (u.role='employee' OR u.role='admin') 
-                   AND s.day_of_week=? 
-                   AND s.entry_time != ''`; // Só busca quem tem horário de entrada preenchido
-
-        db.all(q, [dayWeek], (err, users) => {
-            console.log(`   -> Funcionários agendados para hoje: ${users ? users.length : 0}`);
-            if(!users || users.length === 0) return io.emit('missing-users', []);
-
-            db.all("SELECT user_id FROM time_records WHERE date = ?", [today], (err, recs) => {
-                const present = new Set(recs.map(r => r.user_id));
-                db.all("SELECT user_id, reason FROM certificates WHERE date = ?", [today], (err, certs) => {
-                    const certMap = {}; if(certs) certs.forEach(c => certMap[c.user_id] = c.reason);
-                    
-                    const missing = users.filter(u => !present.has(u.id)).map(u => ({...u, isJustified: !!certMap[u.id], reason: certMap[u.id]}));
-                    console.log(`   -> Faltantes encontrados: ${missing.length}`);
-                    io.emit('missing-users', missing);
-                });
-            });
-        });
-    });
-
-    // 2. HISTÓRICO - FALTAS
-    socket.on('get-history', (data) => {
-        if(!data.date) return;
-        const [y, m, d] = data.date.split('-');
-        const fmtDate = `${d}/${m}/${y}`;
-        
-        // Envia registros normais
-        db.all('SELECT tr.*, u.name as userId, u.role FROM time_records tr JOIN users u ON tr.user_id = u.id WHERE tr.date = ?', [fmtDate], (err, r) => socket.emit('time-records', r||[]));
-        
-        // Calcula dia da semana da data histórica
-        const targetDate = new Date(y, m-1, d, 12, 0, 0);
-        const dayWeek = targetDate.getDay();
-
-        console.log(`📜 Histórico: Buscando faltas para ${fmtDate} (Dia ${dayWeek})`);
-
+    // Função que busca quem DEVERIA trabalhar
+    const getScheduledUsers = (dayOfWeek, callback) => {
+        // Busca users com role employee ou admin QUE TENHAM entry_time preenchido para o dia da semana
         const query = `
             SELECT u.id, u.name, s.entry_time, s.exit_time 
             FROM users u 
             JOIN user_schedules s ON u.id = s.user_id 
             WHERE (u.role = 'employee' OR u.role = 'admin') 
             AND s.day_of_week = ? 
-            AND s.entry_time != ''
+            AND s.entry_time IS NOT NULL 
+            AND s.entry_time != '' 
         `;
+        db.all(query, [dayOfWeek], callback);
+    };
 
-        db.all(query, [dayWeek], (err, users) => {
-            console.log(`   -> Funcionários agendados neste dia: ${users ? users.length : 0}`);
+    // 1. DASHBOARD (HOJE)
+    socket.on('get-missing-users', () => {
+        const today = getFmtDate();
+        const dayWeek = new Date().getDay(); // 0=Domingo, 1=Segunda...
+
+        console.log(`🔎 Dashboard: Buscando agendamentos para dia ${dayWeek} (Hoje: ${today})`);
+
+        getScheduledUsers(dayWeek, (err, users) => {
+            if (err) console.error("Erro SQL:", err);
+            
+            console.log(`   -> Funcionários esperados hoje: ${users ? users.length : 0}`);
+            
+            if (!users || users.length === 0) {
+                // Se ninguém está agendado, a lista de "Faltas" é vazia.
+                return io.emit('missing-users', []);
+            }
+
+            db.all("SELECT user_id FROM time_records WHERE date = ?", [today], (err, recs) => {
+                const present = new Set(recs.map(r => r.user_id));
+                db.all("SELECT user_id, reason FROM certificates WHERE date = ?", [today], (err, certs) => {
+                    const certMap = {}; 
+                    if(certs) certs.forEach(c => certMap[c.user_id] = c.reason);
+                    
+                    // Quem estava agendado MENOS quem está presente
+                    const missing = users.filter(u => !present.has(u.id)).map(u => ({
+                        ...u, 
+                        isJustified: !!certMap[u.id], 
+                        reason: certMap[u.id]
+                    }));
+                    
+                    console.log(`   -> Faltantes reais: ${missing.length}`);
+                    io.emit('missing-users', missing);
+                });
+            });
+        });
+    });
+
+    // 2. HISTÓRICO
+    socket.on('get-history', (data) => {
+        if(!data.date) return;
+        const [y, m, d] = data.date.split('-');
+        const fmtDate = `${d}/${m}/${y}`;
+        
+        // Manda os registros batidos
+        db.all('SELECT tr.*, u.name as userId, u.role FROM time_records tr JOIN users u ON tr.user_id = u.id WHERE tr.date = ?', [fmtDate], (err, r) => socket.emit('time-records', r||[]));
+        
+        // Calcula o dia da semana dessa data antiga
+        const targetDate = new Date(y, m-1, d, 12);
+        const dayWeek = targetDate.getDay();
+
+        console.log(`📜 Histórico: Buscando para ${fmtDate} (Dia ${dayWeek})`);
+
+        getScheduledUsers(dayWeek, (err, users) => {
+            console.log(`   -> Agendados na época: ${users ? users.length : 0}`);
+            
             if(!users || users.length === 0) {
-                // Importante: Se ninguém trabalha nesse dia, manda lista vazia para limpar a tela
-                socket.emit('missing-users', []); 
-                return;
+                return socket.emit('missing-users', []);
             }
 
             db.all("SELECT user_id FROM time_records WHERE date = ?", [fmtDate], (err, recs) => {
@@ -231,17 +245,16 @@ io.on('connection', (socket) => {
         });
     });
 
-    // Login Admin
-    socket.on('admin-login', (d) => {
+    // Outros
+    socket.on('admin-login', (d) => { /* ... */ 
         db.get('SELECT * FROM users WHERE cpf = ?', [d.cpf], async (err, u) => {
              if(u && await bcrypt.compare(d.password, u.password) && u.role === 'admin') 
                 socket.emit('admin-login-success', { user: {name: u.name}, message: 'OK' });
              else socket.emit('admin-login-error', {message: 'Login inválido'});
         });
     });
-
-    // Relatórios
-    socket.on('get-monthly-report', (d) => {
+    
+    socket.on('get-monthly-report', (d) => { /* ... */ 
          if(!d.monthYear) return;
          const [m,y] = d.monthYear.split('-'); const pat = `%/${m}/${y}`;
          const q = `SELECT u.id, u.name, COALESCE(SUM(tr.work_duration),0) as total_minutes, (SELECT COUNT(*) FROM certificates c WHERE c.user_id=u.id AND c.date LIKE ?) as certs_count FROM users u LEFT JOIN time_records tr ON u.id=tr.user_id AND tr.date LIKE ? WHERE (u.role!='visitor' OR u.role IS NULL) GROUP BY u.id`;
@@ -253,7 +266,9 @@ io.on('connection', (socket) => {
             socket.emit('certificate-registered',{message:'OK'}); io.emit('refresh-data');
         });
     });
+
+    socket.on('trigger-refresh', () => io.emit('refresh-data'));
 });
 
 const PORT = 3000;
-server.listen(PORT, () => console.log(`🚀 Servidor com Logs rodando na porta ${PORT}`));
+server.listen(PORT, () => console.log(`🚀 Servidor Corrigido rodando na porta ${PORT}`));
