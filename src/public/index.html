@@ -1,11 +1,29 @@
 <!DOCTYPE html>
-<html lang="pt-BR">
+<html lang="pt-BR" id="html-tag">
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>Sistema de Ponto Digital</title>
     <link rel="stylesheet" href="/css/style.css">
-</head>
+
+    <script>
+        (function() {
+            try {
+                // Pega o tema salvo no localStorage
+                var theme = localStorage.getItem('theme');
+                if (theme === 'dark') {
+                    // Aplica o tema escuro na tag <html> ANTES da página carregar
+                    document.getElementById('html-tag').setAttribute('data-theme', 'dark');
+                } else {
+                    document.getElementById('html-tag').setAttribute('data-theme', 'light');
+                }
+            } catch (e) {
+                // Em caso de erro, usa o tema claro
+                document.getElementById('html-tag').setAttribute('data-theme', 'light');
+            }
+        })();
+    </script>
+    </head>
 <body>
     <header class="header">
         <h1>Sistema de Ponto Digital</h1>

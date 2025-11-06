@@ -1,33 +1,60 @@
 <!DOCTYPE html>
-<html lang="pt-BR">
+<html lang="pt-BR" id="html-tag">
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>Dashboard - Sistema de Ponto Digital</title>
     <link rel="stylesheet" href="/css/style.css">
     <link rel="stylesheet" href="/css/modal.css">
-</head>
+
+    <script>
+        (function() {
+            try {
+                // Pega o tema salvo no localStorage
+                var theme = localStorage.getItem('theme');
+                if (theme === 'dark') {
+                    // Aplica o tema escuro na tag <html> ANTES da página carregar
+                    document.getElementById('html-tag').setAttribute('data-theme', 'dark');
+                } else {
+                    document.getElementById('html-tag').setAttribute('data-theme', 'light');
+                }
+            } catch (e) {
+                // Em caso de erro, usa o tema claro
+                document.getElementById('html-tag').setAttribute('data-theme', 'light');
+            }
+        })();
+    </script>
+    </head>
 
 <body class="dashboard-layout">
     
     <nav class="sidebar">
-        <div class="sidebar-header">
-            <h3>Menu</h3>
+        <div> <div class="sidebar-header">
+                <h3>Menu</h3>
+            </div>
+            <ul class="sidebar-menu">
+                <li><a href="#" id="nav-dashboard" class="active">Dashboard</a></li>
+                <li><a href="#" id="nav-history">Histórico</a></li>
+                <li><a href="#" id="nav-employees">Funcionários</a></li>
+            </ul>
         </div>
-        <ul class="sidebar-menu">
-            <li><a href="#" id="nav-dashboard" class="active">Dashboard</a></li>
-            <li><a href="#" id="nav-history">Histórico</a></li>
-            <li><a href="#" id="nav-employees">Funcionários</a></li>
-        </ul>
+        
+        <div class="sidebar-footer">
+            <div class="theme-switch-wrapper">
+                <span>Mudar Tema</span>
+                <label class="theme-switch" for="theme-toggle">
+                    <input type="checkbox" id="theme-toggle" />
+                    <span class="slider"></span>
+                </label>
+            </div>
+        </div>
     </nav>
-
     <main class="main-content">
         <header class="header">
             <h1>Dashboard</h1>
         </header>
     
         <div class="container">
-
             <div id="dashboard-view">
                 <div class="content-box" id="history-controls-box" style="display: none;">
                     <div class="form-group">
@@ -41,16 +68,6 @@
                     <h2 id="recordsTitle">Registros de Ponto (Hoje)</h2>
                     <div class="records-container">
                         <table id="recordsTable">
-                            <thead>
-                                <tr>
-                                    <th>Nome</th>
-                                    <th>Data</th>
-                                    <th>Hora</th>
-                                    <th>Tipo</th>
-                                    <th>Status</th>
-                                    <th>Jornada</th>
-                                </tr>
-                            </thead>
                             <tbody id="recordsList"></tbody>
                         </table>
                     </div>
@@ -60,13 +77,6 @@
                     <h2 id="missingTitle">Usuários que ainda não bateram ponto (Hoje)</h2>
                     <div class="records-container">
                         <table id="missingUsersTable">
-                            <thead>
-                                <tr>
-                                    <th>Nome</th>
-                                    <th>Horário de Entrada</th>
-                                    <th>Horário de Saída</th>
-                                </tr>
-                            </thead>
                             <tbody id="missingUsersList"></tbody>
                         </table>
                     </div>
@@ -88,8 +98,7 @@
                                     <th>Ações</th>
                                 </tr>
                             </thead>
-                            <tbody id="employeesList">
-                                </tbody>
+                            <tbody id="employeesList"></tbody>
                         </table>
                     </div>
                 </div>
@@ -114,74 +123,35 @@
                 </div>
                 <div class="form-group">
                     <label for="newPassword">Senha:</label>
-                    <input type="password" id="newPassword" required placeholder="Digite a senha">
+                    <input type="password" id="newPassword" placeholder="Deixe em branco para não alterar">
                 </div>
                 <div class="form-group">
                     <label for="newCargo">Cargo:</label>
                     <input type="text" id="newCargo" placeholder="Ex: Desenvolvedor(a)">
                 </div>
-
                 <h3 style="font-size: 16px; font-weight: 600; margin-top: 24px; margin-bottom: 12px; border-top: 1px solid #d8dee4; padding-top: 16px;">
                     Jornada de Trabalho
                 </h3>
                 <p style="font-size: 13px; color: #57606a; margin-top: -8px; margin-bottom: 16px;">
                     Deixe os campos vazios se o funcionário não trabalhar no dia.
                 </p>
-
                 <div id="schedule-editor">
-                    <div class="form-group schedule-day-row">
-                        <label>Domingo:</label>
-                        <input type="time" id="entry-0">
-                        <span>às</span>
-                        <input type="time" id="exit-0">
-                    </div>
-                    <div class="form-group schedule-day-row">
-                        <label>Segunda:</label>
-                        <input type="time" id="entry-1">
-                        <span>às</span>
-                        <input type="time" id="exit-1">
-                    </div>
-                    <div class="form-group schedule-day-row">
-                        <label>Terça:</label>
-                        <input type="time" id="entry-2">
-                        <span>às</span>
-                        <input type="time" id="exit-2">
-                    </div>
-                    <div class="form-group schedule-day-row">
-                        <label>Quarta:</label>
-                        <input type="time" id="entry-3">
-                        <span>às</span>
-                        <input type="time" id="exit-3">
-                    </div>
-                    <div class="form-group schedule-day-row">
-                        <label>Quinta:</label>
-                        <input type="time" id="entry-4">
-                        <span>às</span>
-                        <input type="time" id="exit-4">
-                    </div>
-                    <div class="form-group schedule-day-row">
-                        <label>Sexta:</label>
-                        <input type="time" id="entry-5">
-                        <span>às</span>
-                        <input type="time" id="exit-5">
-                    </div>
-                    <div class="form-group schedule-day-row">
-                        <label>Sábado:</label>
-                        <input type="time" id="entry-6">
-                        <span>às</span>
-                        <input type="time" id="exit-6">
-                    </div>
+                    <div class="form-group schedule-day-row"><label>Domingo:</label><input type="time" id="entry-0"><span>às</span><input type="time" id="exit-0"></div>
+                    <div class="form-group schedule-day-row"><label>Segunda:</label><input type="time" id="entry-1"><span>às</span><input type="time" id="exit-1"></div>
+                    <div class="form-group schedule-day-row"><label>Terça:</label><input type="time" id="entry-2"><span>às</span><input type="time" id="exit-2"></div>
+                    <div class="form-group schedule-day-row"><label>Quarta:</label><input type="time" id="entry-3"><span>às</span><input type="time" id="exit-3"></div>
+                    <div class="form-group schedule-day-row"><label>Quinta:</label><input type="time" id="entry-4"><span>às</span><input type="time" id="exit-4"></div>
+                    <div class="form-group schedule-day-row"><label>Sexta:</label><input type="time" id="entry-5"><span>às</span><input type="time" id="exit-5"></div>
+                    <div class="form-group schedule-day-row"><label>Sábado:</label><input type="time" id="entry-6"><span>às</span><input type="time" id="exit-6"></div>
                 </div>
-
                 <div id="registerMessage"></div>
             </form>
         </div>
         <div class="modal-footer">
             <button class="secondary" onclick="closeModal()">Cancelar</button>
-            <button class="primary" onclick="submitForm()">Registrar</button>
+            <button class="primary" onclick="submitForm()">Salvar</button>
         </div>
     </div>
-    
     <script src="/socket.io/socket.io.js"></script>
     <script src="/js/dashboard.js"></script>
 </body>

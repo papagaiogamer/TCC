@@ -1,5 +1,9 @@
+/* ======================================================= */
+/* 1. VARIÁVEIS DE TEMA (CLARO E ESCURO)                 */
+/* ======================================================= */
+
+/* :root define o TEMA CLARO (Padrão) */
 :root {
-    /* Cores base (GitHub Light) */
     --color-canvas-default: #ffffff;
     --color-canvas-subtle: #f6f8fa;
     --color-border-default: #d0d7de;
@@ -11,31 +15,70 @@
     --color-danger-fg: #cf222e;
     --color-primer-shadow-inset: inset 0 1px 0 rgba(208,215,222,0.2);
 
+    /* Cores de Texto */
+    --color-text-primary: #24292f;
+    --color-text-secondary: #57606a;
+    --color-text-link: #0969da;
+
     /* Botões e Header */
     --color-btn-bg: #f6f8fa;
     --color-btn-hover-bg: #f3f4f6;
     --color-btn-border: rgba(27,31,36,0.15);
     --color-header-bg: #24292f;
     --color-header-text: #ffffff;
-
-    /* Tipografia */
-    --font-primary: -apple-system, BlinkMacSystemFont, "Segoe UI", "Noto Sans", Helvetica, Arial, sans-serif;
+    --color-sidebar-bg: #24292f;
+    --color-sidebar-text: #c9d1d9;
+    --color-sidebar-hover-bg: #30363d;
 }
 
-/* Reset e estrutura */
+/* NOVO: Define o TEMA ESCURO (GitHub Primer Dark) */
+[data-theme="dark"] {
+    --color-canvas-default: #0d1117;
+    --color-canvas-subtle: #161b22;
+    --color-border-default: #30363d;
+    --color-border-muted: #21262d;
+    --color-neutral-muted: rgba(110,118,129,0.2);
+    --color-accent-fg: #58a6ff;
+    --color-accent-hover: #79c0ff;
+    --color-success-fg: #3fb950;
+    --color-danger-fg: #f85149;
+    --color-primer-shadow-inset: inset 0 1px 0 rgba(208,215,222,0.1);
+
+    /* Cores de Texto */
+    --color-text-primary: #c9d1d9;
+    --color-text-secondary: #8b949e;
+    --color-text-link: #58a6ff;
+
+    /* Botões e Header */
+    --color-btn-bg: #21262d;
+    --color-btn-hover-bg: #30363d;
+    --color-btn-border: rgba(240,246,252,0.1);
+    --color-header-bg: #161b22;
+    --color-header-text: #f0f6fc;
+    --color-sidebar-bg: #161b22; /* Sidebar um pouco mais escura no tema escuro */
+    --color-sidebar-text: #8b949e;
+    --color-sidebar-hover-bg: #21262d;
+}
+
+
+/* ======================================================= */
+/* 2. ESTILOS GERAIS (Usam as variáveis)                   */
+/* ======================================================= */
+
 * {
     margin: 0;
     padding: 0;
     box-sizing: border-box;
 }
 
-/* MODIFICADO: Body de volta ao original (para o index.html) */
+/* MODIFICADO: Usa variáveis de cor */
 body {
     font-family: var(--font-primary);
     background-color: var(--color-canvas-subtle);
-    color: #24292f;
+    color: var(--color-text-primary);
     line-height: 1.5;
-    padding-top: 70px; /* Restaurado */
+    padding-top: 70px;
+    transition: background-color 0.2s, color 0.2s; /* Transição suave */
 }
 
 /* Container principal */
@@ -45,19 +88,19 @@ body {
     padding: 0 16px;
 }
 
-/* MODIFICADO: Header de volta ao original (para o index.html) */
+/* MODIFICADO: Usa variáveis de cor */
 .header {
     background-color: var(--color-header-bg);
     color: var(--color-header-text);
     padding: 14px 0;
     position: fixed;
     top: 0;
-    left: 0; /* Restaurado */
-    width: 100%; /* Restaurado */
+    left: 0;
+    width: 100%;
     z-index: 1000;
     box-shadow: 0 1px 0 rgba(0, 0, 0, 0.1);
+    border-bottom: 1px solid var(--color-border-default);
 }
-
 .header h1 {
     max-width: 980px;
     margin: 0 auto;
@@ -66,80 +109,81 @@ body {
     font-weight: 600;
 }
 
-/* ======================================================= */
-/* NOVO: Estilos de Layout do Dashboard (isolados)         */
-/* ======================================================= */
-
-/* Aplica o layout flex APENAS ao body do dashboard */
+/* ============================= */
+/* Layout Sidebar (MODIFICADO)   */
+/* ============================= */
 body.dashboard-layout {
     display: flex;
-    padding-top: 0; /* Remove o padding-top original */
+    padding-top: 0;
 }
 
-/* Estilos da Sidebar (só funcionam dentro do .dashboard-layout) */
 .dashboard-layout .sidebar {
     width: 220px;
-    background-color: #24292f;
-    color: #ffffff;
+    background-color: var(--color-sidebar-bg);
+    color: var(--color-sidebar-text);
     height: 100vh;
     position: fixed;
     top: 0;
     left: 0;
     padding: 20px 0;
     z-index: 100;
+    border-right: 1px solid var(--color-border-default);
+    display: flex; /* Adicionado para o 'footer' do toggle */
+    flex-direction: column; /* Adicionado para o 'footer' do toggle */
 }
-
 .dashboard-layout .sidebar-header {
     padding: 0 20px;
     margin-bottom: 20px;
     font-size: 24px;
-    border-bottom: 1px solid #444;
+    border-bottom: 1px solid var(--color-border-default);
     padding-bottom: 15px;
+    color: var(--color-header-text);
 }
-
 .dashboard-layout .sidebar-menu {
     list-style: none;
     padding: 0;
     margin: 0;
+    flex-grow: 1; /* Faz o menu ocupar o espaço */
 }
-
 .dashboard-layout .sidebar-menu li a {
     display: block;
     padding: 12px 20px;
     text-decoration: none;
-    color: #c9d1d9;
+    color: var(--color-sidebar-text);
     transition: background-color 0.2s;
 }
-
 .dashboard-layout .sidebar-menu li a:hover {
-    background-color: #30363d;
+    background-color: var(--color-sidebar-hover-bg);
 }
-
 .dashboard-layout .sidebar-menu li a.active {
     background-color: var(--color-accent-fg);
-    color: #ffffff;
+    color: var(--color-header-text);
     font-weight: 600;
 }
 
-/* Estilos do Conteúdo Principal (só funcionam dentro do .dashboard-layout) */
+/* NOVO: Footer da Sidebar (para o toggle) */
+.dashboard-layout .sidebar-footer {
+    padding: 20px;
+    border-top: 1px solid var(--color-border-default);
+}
+
+/* Conteúdo principal (MODIFICADO) */
 .dashboard-layout .main-content {
     margin-left: 220px;
     width: 100%; 
-    padding-top: 70px; /* Adiciona padding para o header fixo */
+    padding-top: 70px; 
 }
-
-/* Modifica o Header APENAS dentro do .dashboard-layout */
 .dashboard-layout .header {
-    left: 220px; /* Compensa a sidebar */
-    width: calc(100% - 220px); /* Ocupa o resto */
+    left: 220px; 
+    width: calc(100% - 220px);
+    border-bottom: 1px solid var(--color-border-default);
 }
 
 /* ======================================================= */
-/* Fim dos Estilos de Layout do Dashboard                  */
+/* 3. ESTILOS DE COMPONENTES (Usam variáveis)               */
 /* ======================================================= */
 
-
-/* Caixas de conteúdo (cards) - Estilo Global */
+/* Caixas de conteúdo (MODIFICADO) */
 .content-box,
 .register-user-container {
     background-color: var(--color-canvas-default);
@@ -148,52 +192,46 @@ body.dashboard-layout {
     padding: 24px;
     margin-bottom: 24px;
     box-shadow: 0 1px 0 rgba(27,31,36,0.04);
-    transition: box-shadow 0.2s ease;
 }
 
-.content-box:hover {
-    box-shadow: 0 4px 12px rgba(140,149,159,0.15);
-}
-
-/* Títulos - Estilo Global */
+/* Títulos (MODIFICADO) */
 h2 {
     font-size: 18px;
     font-weight: 600;
     margin-bottom: 16px;
     padding-bottom: 8px;
     border-bottom: 1px solid var(--color-border-muted);
+    color: var(--color-text-primary);
 }
 
-/* Formulário - Estilo Global */
+/* Formulário (MODIFICADO) */
 .form-group {
     margin-bottom: 16px;
 }
-
 label {
     display: block;
     margin-bottom: 6px;
     font-weight: 500;
-    color: #24292f;
+    color: var(--color-text-primary);
 }
-
-input {
+input, select { /* Adicionado 'select' */
     width: 100%;
     padding: 6px 12px;
     font-size: 14px;
     border: 1px solid var(--color-border-default);
     border-radius: 6px;
     background-color: var(--color-canvas-default);
+    color: var(--color-text-primary);
     box-shadow: var(--color-primer-shadow-inset);
     transition: border-color 0.15s, box-shadow 0.15s;
 }
-
-input:focus {
+input:focus, select:focus {
     border-color: var(--color-accent-fg);
     outline: none;
     box-shadow: 0 0 0 3px rgba(9,105,218,0.3);
 }
 
-/* Botões - Estilo Global */
+/* Botões (MODIFICADO) */
 button {
     display: inline-block;
     padding: 5px 16px;
@@ -203,149 +241,155 @@ button {
     border: 1px solid var(--color-btn-border);
     border-radius: 6px;
     background-color: var(--color-btn-bg);
-    color: #24292f;
+    color: var(--color-text-primary);
     cursor: pointer;
     transition: all 0.2s ease-in-out;
 }
-
 button:hover {
     background-color: var(--color-btn-hover-bg);
 }
-
 button[type="submit"] {
     background-color: #2da44e;
     color: #fff;
     border-color: var(--color-btn-border);
 }
-
 button[type="submit"]:hover {
     background-color: #2c974b;
 }
 
-/* Mensagens de feedback - Estilo Global */
+/* Mensagens de feedback (MODIFICADO) */
 #message, #registerMessage {
     margin-top: 16px;
     padding: 10px 16px;
     border-radius: 6px;
     font-size: 14px;
 }
-
 #message.success, #registerMessage.success {
     background-color: rgba(74,194,107,0.1);
     border: 1px solid rgba(74,194,107,0.4);
     color: var(--color-success-fg);
 }
-
 #message.error, #registerMessage.error {
     background-color: rgba(248,81,73,0.1);
     border: 1px solid rgba(248,81,73,0.4);
     color: var(--color-danger-fg);
 }
 
-/* Links - Estilo Global */
-.links {
-    margin-top: 16px;
-    text-align: center;
-}
-
+/* Links (MODIFICADO) */
 .links a {
-    color: var(--color-accent-fg);
+    color: var(--color-text-link);
     text-decoration: none;
     font-size: 14px;
 }
-
 .links a:hover {
     text-decoration: underline;
     color: var(--color-accent-hover);
 }
 
-/* Tabelas - Estilo Global */
+/* Tabelas (MODIFICADO) */
 .records-container {
     margin-top: 16px;
     border: 1px solid var(--color-border-default);
     border-radius: 6px;
     overflow: hidden;
-    box-shadow: 0 1px 0 rgba(27,31,36,0.04);
 }
-
 table {
     width: 100%;
     border-collapse: collapse;
     font-size: 14px;
 }
-
 th {
     background-color: var(--color-canvas-subtle);
     font-weight: 600;
-    color: #24292f;
+    color: var(--color-text-primary);
 }
-
 th, td {
     padding: 12px;
     text-align: left;
     border-bottom: 1px solid var(--color-border-muted);
 }
-
 tbody tr:hover {
-    background-color: #f6f8fa;
+    background-color: var(--color-canvas-subtle);
 }
-
 tr:last-child td {
     border-bottom: none;
 }
+td {
+    color: var(--color-text-secondary);
+}
+td.duration {
+    color: var(--color-accent-fg);
+    font-weight: bold;
+}
+td.atraso {
+    color: #b35900;
+}
 
-/* MODIFICADO: Responsividade */
+/* Responsividade (MODIFICADO) */
 @media (max-width: 768px) {
-    /* Regras de layout do dashboard para mobile */
-    body.dashboard-layout {
-        display: block; /* Layout vertical no mobile */
-    }
-
-    .dashboard-layout .sidebar {
-        width: 100%;
-        height: auto;
-        position: relative;
-        z-index: 10;
-    }
-    .dashboard-layout .sidebar-header {
-        display: none;
-    }
-    .dashboard-layout .sidebar-menu {
-        display: flex;
-        justify-content: center;
-    }
-    .dashboard-layout .sidebar-menu li {
-        flex: 1;
-        text-align: center;
-    }
+    /* ... (Estilos de responsividade originais) ... */
+    body.dashboard-layout { display: block; }
+    .dashboard-layout .sidebar { width: 100%; height: auto; position: relative; }
+    .dashboard-layout .sidebar-header { display: none; }
+    .dashboard-layout .sidebar-menu { display: flex; justify-content: center; }
+    .dashboard-layout .sidebar-menu li { flex: 1; text-align: center; }
+    .dashboard-layout .main-content { margin-left: 0; padding-top: 0; }
+    .dashboard-layout .header { left: 0; width: 100%; position: relative; box-shadow: none; }
+    .container { padding: 12px; margin: 20px auto; }
+    .header h1 { font-size: 18px; }
+    .content-box { padding: 16px; }
+    table, th, td { font-size: 13px; }
     
-    .dashboard-layout .main-content {
-        margin-left: 0;
-        padding-top: 0;
-    }
+    /* NOVO: Esconde o toggle em texto no mobile */
+    .theme-switch-wrapper span { display: none; }
+    .dashboard-layout .sidebar-footer { text-align: center; }
+}
 
-    .dashboard-layout .header {
-        left: 0;
-        width: 100%;
-        position: relative;
-        box-shadow: none;
-    }
-
-    /* Regras de container globais para mobile */
-    .container {
-        padding: 12px;
-        margin: 20px auto;
-    }
-    
-    .header h1 {
-        font-size: 18px;
-    }
-
-    .content-box {
-        padding: 16px;
-    }
-
-    table, th, td {
-        font-size: 13px;
-    }
+/* ======================================================= */
+/* 4. NOVO: Estilos do Theme Toggle                       */
+/* ======================================================= */
+.theme-switch-wrapper {
+    display: flex;
+    align-items: center;
+    gap: 10px;
+    color: var(--color-sidebar-text);
+}
+.theme-switch {
+    position: relative;
+    display: inline-block;
+    width: 44px; /* Tamanho reduzido */
+    height: 24px;
+}
+.theme-switch input {
+    opacity: 0;
+    width: 0;
+    height: 0;
+}
+.slider {
+    position: absolute;
+    cursor: pointer;
+    top: 0;
+    left: 0;
+    right: 0;
+    bottom: 0;
+    background-color: #444;
+    transition: .4s;
+    border-radius: 24px;
+}
+.slider:before {
+    position: absolute;
+    content: "";
+    height: 18px;
+    width: 18px;
+    left: 3px;
+    bottom: 3px;
+    background-color: white;
+    transition: .4s;
+    border-radius: 50%;
+}
+input:checked + .slider {
+    background-color: var(--color-accent-fg);
+}
+input:checked + .slider:before {
+    transform: translateX(20px);
 }

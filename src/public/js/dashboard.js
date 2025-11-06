@@ -28,9 +28,8 @@ function closeModal() {
     // Habilita campos de CPF/Senha (caso tenham sido desabilitados na edição)
     document.getElementById('newCpf').disabled = false;
     document.getElementById('newPassword').disabled = false;
+    document.getElementById('newPassword').placeholder = 'Digite a senha'; // Restaura placeholder
 }
-
-document.getElementById('modalOverlay').addEventListener('click', closeModal);
 
 // =====================
 // Registro e Edição (MODIFICADO)
@@ -92,7 +91,6 @@ function submitForm() {
 // Lógica de Navegação (Sidebar) (Sem mudanças)
 // ==========================================
 const navDashboard = document.getElementById('nav-dashboard');
-// ... (todo o resto da lógica de navegação 'showDashboardView', 'showHistoryView', etc. continua igual) ...
 const navHistory = document.getElementById('nav-history');
 const navEmployees = document.getElementById('nav-employees');
 const dashboardView = document.getElementById('dashboard-view');
@@ -138,6 +136,7 @@ navEmployees.addEventListener('click', (e) => { e.preventDefault(); showEmployee
 // Helpers de Data e Carregamento (Sem mudanças)
 // =================================================
 function getTodayYYYYMMDD() {
+    // ... (código idêntico) ...
     const today = new Date();
     const y = today.getFullYear();
     const m = String(today.getMonth() + 1).padStart(2, '0');
@@ -145,6 +144,7 @@ function getTodayYYYYMMDD() {
     return `${y}-${m}-${d}`;
 }
 function formatToDDMMYYYY(dateStr) {
+    // ... (código idêntico) ...
     const [year, month, day] = dateStr.split('-');
     return `${day}/${month}/${year}`;
 }
@@ -191,6 +191,7 @@ function updateRecordsList(records) {
     }
     records.forEach(record => {
         const row = document.createElement('tr');
+        // ... (resto do código idêntico) ...
         const typeClass = record.type === 'entrada' ? 'entrada' : 'saida';
         const typeLabel = record.type === 'entrada' ? 'Entrada' : 'Saída';
         let statusLabel = '—', statusClass = 'na';
@@ -220,7 +221,7 @@ function updateMissingUsersList(users) {
 }
 
 // ==========================================
-// Funções da View de Funcionários (MODIFICADO)
+// Funções da View de Funcionários (Sem mudanças)
 // ==========================================
 function loadEmployees() {
     socket.emit('get-employees');
@@ -246,50 +247,38 @@ function updateEmployeesList(employees) {
         tbody.appendChild(row);
     });
 }
-
-// NOVO: Função chamada pelo botão "Editar"
 function editEmployee(id) {
     if (!id) return;
-    // Pede ao servidor os dados completos deste usuário
     socket.emit('get-employee-details', { id });
 }
 
 // =====================
-// Eventos Socket.IO (MODIFICADOS)
+// Eventos Socket.IO (Sem mudanças)
 // =====================
 socket.on('connect', () => { showDashboardView(); });
-
 socket.on('user-registered', (response) => {
+    // ... (código idêntico) ...
     const messageDiv = document.getElementById('registerMessage');
     messageDiv.textContent = response.message;
     messageDiv.className = 'success';
-    setTimeout(() => {
-        closeModal();
-        loadEmployees(); // Recarrega a lista de funcionários
-    }, 800);
+    setTimeout(() => { closeModal(); loadEmployees(); }, 800);
 });
-
 socket.on('user-register-error', (response) => {
     // ... (código idêntico) ...
     const messageDiv = document.getElementById('registerMessage');
     messageDiv.textContent = response.message;
     messageDiv.className = 'error';
 });
-
-// NOVO: Feedback da atualização (edição)
 socket.on('user-updated', (response) => {
-    // Usa o mesmo 'registerMessage' para feedback
+    // ... (código idêntico) ...
     const messageDiv = document.getElementById('registerMessage'); 
     messageDiv.textContent = response.message;
     messageDiv.className = 'success';
-    setTimeout(() => {
-        closeModal();
-        loadEmployees(); // Recarrega a lista
-    }, 800);
+    setTimeout(() => { closeModal(); loadEmployees(); }, 800);
 });
-
 socket.on('time-records', (records) => { updateRecordsList(records); });
 socket.on('time-registered', (records) => {
+    // ... (código idêntico) ...
     if (dashboardView.style.display === 'block') {
         updateRecordsList(records);
         socket.emit('get-missing-users');
@@ -297,46 +286,34 @@ socket.on('time-registered', (records) => {
 });
 socket.on('missing-users', (users) => { updateMissingUsersList(users); });
 socket.on('employees-list', (employees) => { updateEmployeesList(employees); });
-
-
-// NOVO: Recebe os dados do funcionário para editar
 socket.on('employee-details', (data) => {
+    // ... (código idêntico) ...
     if (!data.user) {
         alert('Erro: Não foi possível carregar os dados deste funcionário.');
         return;
     }
-
     const { user, schedule } = data;
-
-    // 1. Preenche os dados básicos
     document.getElementById('newName').value = user.name;
     document.getElementById('newCpf').value = user.cpf;
-    document.getElementById('newCpf').disabled = true; // CPF não pode ser editado
-    document.getElementById('newPassword').value = ''; // Senha fica vazia
-    document.getElementById('newPassword').placeholder = 'Deixe em branco para não alterar'; // Dica
+    document.getElementById('newCpf').disabled = true;
+    document.getElementById('newPassword').value = '';
+    document.getElementById('newPassword').placeholder = 'Deixe em branco para não alterar';
     document.getElementById('newCargo').value = user.cargo || '';
-
-    // 2. Preenche a jornada de trabalho
     schedule.forEach(day => {
-        // Garante que 'null' vire uma string vazia '' para o input
         document.getElementById(`entry-${day.day_of_week}`).value = day.entry_time || '';
         document.getElementById(`exit-${day.day_of_week}`).value = day.exit_time || '';
     });
-
-    // 3. Configura o modal para o "Modo de Edição"
-    currentEditUserId = user.id; // Define o ID global
+    currentEditUserId = user.id;
     document.querySelector('.modal-title').textContent = `Editar: ${user.name}`;
     document.querySelector('.modal-footer .primary').textContent = 'Salvar Alterações';
-
-    // 4. Abre o modal
     openModal();
 });
-
 
 // ==========================================
 // Event Listeners (Sem mudanças)
 // ==========================================
 document.getElementById('historyDate').addEventListener('change', (e) => {
+    // ... (código idêntico) ...
     const selectedDate = e.target.value;
     if (selectedDate) { loadDataForDate(selectedDate); }
 });
@@ -346,19 +323,21 @@ document.getElementById('btnResetDate').addEventListener('click', () => { loadDa
 // Estilos Visuais (Sem mudanças)
 // =====================
 const style = document.createElement('style');
+// ... (código idêntico) ...
 style.innerHTML = `
     td.entrada { color: green; font-weight: bold; }
     td.saida { color: red; font-weight: bold; }
     td.atraso { color: #b35900; font-weight: bold; }
     td.no-horario { color: #555; }
     td.na { color: #999; }
-    td.duration { font-weight: bold; color: #0969da; }
+    td.duration { font-weight: bold; color: var(--color-accent-fg); } /* Modificado para usar var */
     .input-date {
         width: 100%; padding: 6px 12px; font-size: 14px;
         border: 1px solid var(--color-border-default); border-radius: 6px;
         background-color: var(--color-canvas-default);
         box-shadow: var(--color-primer-shadow-inset);
         transition: border-color 0.15s, box-shadow 0.15s;
+        color: var(--color-text-primary); /* Adicionado */
     }
     .input-date:focus {
         border-color: var(--color-accent-fg); outline: none;
@@ -366,3 +345,37 @@ style.innerHTML = `
     }
 `;
 document.head.appendChild(style);
+
+
+// ==========================================
+// NOVO: Lógica do Theme Toggle
+// ==========================================
+document.addEventListener('DOMContentLoaded', () => {
+    const themeToggle = document.getElementById('theme-toggle');
+    const htmlTag = document.getElementById('html-tag');
+    
+    // 1. Sincroniza o checkbox com o tema atual (que foi definido pelo script inline)
+    try {
+        const currentTheme = localStorage.getItem('theme');
+        if (currentTheme === 'dark') {
+            themeToggle.checked = true;
+        } else {
+            themeToggle.checked = false;
+        }
+    } catch (e) {
+        themeToggle.checked = false; // Padrão
+    }
+
+    // 2. Adiciona o listener para o clique
+    themeToggle.addEventListener('change', (e) => {
+        if (e.target.checked) {
+            // Mudar para Dark
+            htmlTag.setAttribute('data-theme', 'dark');
+            localStorage.setItem('theme', 'dark');
+        } else {
+            // Mudar para Light
+            htmlTag.setAttribute('data-theme', 'light');
+            localStorage.setItem('theme', 'light');
+        }
+    });
+});
