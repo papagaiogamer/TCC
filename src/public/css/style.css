@@ -29,32 +29,92 @@
     box-sizing: border-box;
 }
 
+/* MODIFICADO: Body agora é flex e sem padding-top */
 body {
     font-family: var(--font-primary);
     background-color: var(--color-canvas-subtle);
     color: #24292f;
     line-height: 1.5;
-    padding-top: 70px;
+    padding-top: 0; /* Removido */
+    display: flex; /* Adicionado */
 }
 
-/* Container principal */
+/* ============================= */
+/* NOVO: Layout Sidebar          */
+/* ============================= */
+.sidebar {
+    width: 220px;
+    background-color: #24292f; /* Cor escura, como o header */
+    color: #ffffff;
+    height: 100vh; /* Altura total da tela */
+    position: fixed; /* Fica presa na esquerda */
+    top: 0;
+    left: 0;
+    padding: 20px 0;
+    z-index: 100;
+}
+
+.sidebar-header {
+    padding: 0 20px;
+    margin-bottom: 20px;
+    font-size: 24px;
+    border-bottom: 1px solid #444;
+    padding-bottom: 15px;
+}
+
+.sidebar-menu {
+    list-style: none;
+    padding: 0;
+    margin: 0;
+}
+
+.sidebar-menu li a {
+    display: block;
+    padding: 12px 20px;
+    text-decoration: none;
+    color: #c9d1d9; /* Cor de link mais clara */
+    transition: background-color 0.2s;
+}
+
+.sidebar-menu li a:hover {
+    background-color: #30363d; /* Hover sutil */
+}
+
+/* Estilo do link ativo */
+.sidebar-menu li a.active {
+    background-color: var(--color-accent-fg); /* Azul */
+    color: #ffffff;
+    font-weight: 600;
+}
+
+/* NOVO: Conteúdo principal */
+.main-content {
+    /* Ocupa o resto da tela */
+    margin-left: 220px; /* Largura da sidebar */
+    width: 100%; 
+    /* O padding-top agora é necessário aqui */
+    padding-top: 70px; 
+}
+
+/* Container principal (Dentro do main-content) */
 .container {
     max-width: 980px;
     margin: 40px auto;
     padding: 0 16px;
 }
 
-/* Header estilo GitHub */
+/* MODIFICADO: Header agora está no main-content */
 .header {
     background-color: var(--color-header-bg);
     color: var(--color-header-text);
     padding: 14px 0;
     position: fixed;
     top: 0;
-    left: 0;
-    width: 100%;
     z-index: 1000;
     box-shadow: 0 1px 0 rgba(0, 0, 0, 0.1);
+    /* 'left' e 'width' ajustados para o main-content */
+    left: 220px; 
+    width: calc(100% - 220px);
 }
 
 .header h1 {
@@ -220,8 +280,46 @@ tr:last-child td {
     border-bottom: none;
 }
 
-/* Responsividade */
+/* MODIFICADO: Responsividade para o novo layout */
 @media (max-width: 768px) {
+    /* Body volta ao layout vertical */
+    body {
+        display: block;
+    }
+
+    /* Sidebar vira um header no mobile */
+    .sidebar {
+        width: 100%;
+        height: auto;
+        position: relative;
+        z-index: 10;
+    }
+    .sidebar-header {
+        display: none; /* Esconde "Menu" */
+    }
+    .sidebar-menu {
+        display: flex; /* Links lado a lado */
+        justify-content: center;
+    }
+    .sidebar-menu li {
+        flex: 1;
+        text-align: center;
+    }
+    
+    /* Conteúdo principal sem margem */
+    .main-content {
+        margin-left: 0;
+        padding-top: 0; /* Header não é mais fixo */
+    }
+
+    /* Header volta ao normal */
+    .header {
+        left: 0;
+        width: 100%;
+        position: relative; /* Deixa de ser fixo */
+        box-shadow: none;
+    }
+    
     .container {
         padding: 12px;
         margin: 20px auto;
@@ -238,5 +336,4 @@ tr:last-child td {
     table, th, td {
         font-size: 13px;
     }
-    
 }

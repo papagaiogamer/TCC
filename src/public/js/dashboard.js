@@ -42,8 +42,55 @@ function submitForm() {
     socket.emit('register-user', newUser);
 }
 
+// ==========================================
+// NOVO: Lógica de Navegação (Sidebar)
+// ==========================================
+const navDashboard = document.getElementById('nav-dashboard');
+const navHistory = document.getElementById('nav-history');
+const historyControlsBox = document.getElementById('history-controls-box');
+const historyDateInput = document.getElementById('historyDate');
+const headerTitle = document.querySelector('.header h1'); // Seleciona o H1 do header
+
+// Função para mostrar a view do DASHBOARD (HOJE)
+function showDashboardView() {
+    historyControlsBox.style.display = 'none'; // Esconde o seletor de data
+    headerTitle.textContent = 'Dashboard'; // Muda o título
+    
+    // Atualiza classes ativas
+    navDashboard.classList.add('active');
+    navHistory.classList.remove('active');
+    
+    // Carrega os dados de HOJE (null)
+    loadDataForDate(null);
+}
+
+// Função para mostrar a view de HISTÓRICO
+function showHistoryView() {
+    historyControlsBox.style.display = 'block'; // Mostra o seletor de data
+    headerTitle.textContent = 'Histórico'; // Muda o título
+    
+    // Atualiza classes ativas
+    navDashboard.classList.remove('active');
+    navHistory.classList.add('active');
+    
+    // Carrega os dados da data selecionada (ou hoje, se nada selecionado)
+    const selectedDate = historyDateInput.value;
+    loadDataForDate(selectedDate || getTodayYYYYMMDD()); // Carrega hoje se vazio
+}
+
+// Adiciona os cliques nos links da sidebar
+navDashboard.addEventListener('click', (e) => {
+    e.preventDefault();
+    showDashboardView();
+});
+
+navHistory.addEventListener('click', (e) => {
+    e.preventDefault();
+    showHistoryView();
+});
+
 // =================================================
-// NOVO: Helpers de Data e Carregamento de Dados
+// Helpers de Data e Carregamento de Dados
 // =================================================
 
 // Retorna a data de hoje formatada como 'YYYY-MM-DD'
@@ -62,6 +109,7 @@ function formatToDDMMYYYY(dateStr) {
 }
 
 // Função central para carregar dados (Hoje ou Histórico)
+// Esta função NÃO precisa de alterações.
 function loadDataForDate(dateStr) {
     const recordsTitle = document.getElementById('recordsTitle');
     const missingTitle = document.getElementById('missingTitle');
@@ -92,6 +140,7 @@ function loadDataForDate(dateStr) {
 
 // =====================
 // Funções de Formatação e Atualização de Tabelas
+// (Sem alterações aqui)
 // =====================
 
 function formatDuration(totalMinutes) {
@@ -110,7 +159,6 @@ function updateRecordsList(records) {
 
     if (!records || records.length === 0) {
         const row = document.createElement('tr');
-        /* MODIFICADO: colspan atualizado para 6 */
         row.innerHTML = `<td colspan="6" style="text-align:center; color:gray;">Nenhum ponto registrado na data selecionada.</td>`;
         tbody.appendChild(row);
         return;
@@ -176,8 +224,8 @@ function updateMissingUsersList(users) {
 
 // Conexão inicial
 socket.on('connect', () => {
-    // MODIFICADO: Carrega os dados de hoje usando a nova função
-    loadDataForDate(null); 
+    // MODIFICADO: Carrega a view do Dashboard por padrão
+    showDashboardView(); 
 });
 
 // Novo usuário cadastrado
@@ -189,8 +237,12 @@ socket.on('user-registered', (response) => {
     setTimeout(() => {
         document.getElementById('registerForm').reset();
         closeModal();
-        // Recarrega os dados da data atual (para atualizar lista de ausentes)
-        loadDataForDate(document.getElementById('historyDate').value); 
+        // Recarrega os dados da view atual (seja hoje ou histórico)
+        if (navDashboard.classList.contains('active')) {
+            loadDataForDate(null);
+        } else {
+            loadDataForDate(historyDateInput.value);
+        }
     }, 800);
 });
 
@@ -208,10 +260,9 @@ socket.on('time-records', (records) => {
 
 socket.on('time-registered', (records) => {
     // Este evento só dispara quando ALGUÉM BATE O PONTO (não no histórico)
-    const dateInput = document.getElementById('historyDate');
     
-    // Só atualiza em tempo real se o usuário estiver vendo os dados de HOJE
-    if (!dateInput.value || dateInput.value === getTodayYYYYMMDD()) {
+    // Só atualiza em tempo real se o usuário estiver vendo o DASHBOARD (HOJE)
+    if (navDashboard.classList.contains('active')) {
         updateRecordsList(records);
         socket.emit('get-missing-users'); // Atualiza lista de ausentes
     }
@@ -224,7 +275,7 @@ socket.on('missing-users', (users) => {
 });
 
 // ==========================================
-// NOVO: Event Listeners para Histórico
+// Event Listeners para Histórico (Sem alterações)
 // ==========================================
 document.getElementById('historyDate').addEventListener('change', (e) => {
     const selectedDate = e.target.value;
@@ -239,7 +290,7 @@ document.getElementById('btnResetDate').addEventListener('click', () => {
 });
 
 // =====================
-// Estilos Visuais
+// Estilos Visuais (Sem alterações)
 // =====================
 const style = document.createElement('style');
 style.innerHTML = `

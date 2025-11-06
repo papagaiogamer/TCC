@@ -7,64 +7,74 @@
     <link rel="stylesheet" href="/css/style.css">
     <link rel="stylesheet" href="/css/modal.css">
 </head>
-<body>
-    <header class="header">
-        <h1>Dashboard</h1>
-    </header>
+
+<body style="display: flex;">
     
-    <div class="container">
-        <div class="content-box">
-            <button class="btn-open-modal" onclick="openModal()">+ Registrar Novo Usuário</button>
+    <nav class="sidebar">
+        <div class="sidebar-header">
+            <h3>Menu</h3>
         </div>
+        <ul class="sidebar-menu">
+            <li><a href="#" id="nav-dashboard" class="active">Dashboard</a></li>
+            <li><a href="#" id="nav-history">Histórico</a></li>
+        </ul>
+    </nav>
 
-        <div class="content-box">
-            <div class="form-group">
-                <label for="historyDate">Consultar Histórico por Data:</label>
-                <input type="date" id="historyDate" class="input-date">
+    <main class="main-content">
+        <header class="header">
+            <h1>Dashboard</h1>
+        </header>
+    
+        <div class="container">
+            <div class="content-box">
+                <button class="btn-open-modal" onclick="openModal()">+ Registrar Novo Usuário</button>
             </div>
-            <button id="btnResetDate" class="secondary" style="display: none;">Ver Registros de Hoje</button>
-        </div>
-        <div class="content-box">
-            <h2 id="recordsTitle">Registros de Ponto (Hoje)</h2>
-            <div class="records-container">
-                <table id="recordsTable">
-                    <thead>
-                        <tr>
-                            <th>Nome</th>
-                            <th>Data</th>
-                            <th>Hora</th>
-                            <th>Tipo</th>
-                            <th>Status</th>
-                            <th>Jornada</th>
-                        </tr>
-                    </thead>
-                    <tbody id="recordsList"></tbody>
-                </table>
-            </div>
-        </div>
 
-        <div class="content-box">
-             <h2 id="missingTitle">Usuários que ainda não bateram ponto (Hoje)</h2>
-            <div class="records-container">
-                <table id="missingUsersTable">
-                    <thead>
-                        <tr>
-                            <th>Nome</th>
-                            <th>Horário de Entrada</th>
-                            <th>Horário de Saída</th>
-                        </tr>
-                    </thead>
-                    <tbody id="missingUsersList">
-                        <tr>
-                            <td colspan="3" style="text-align:center; color:gray;">
-                                Carregando...
-                            </td>
-                        </tr>
-                    </tbody>
-                </table>
+            <div class="content-box" id="history-controls-box" style="display: none;">
+                <div class="form-group">
+                    <label for="historyDate">Consultar Histórico por Data:</label>
+                    <input type="date" id="historyDate" class="input-date">
+                </div>
+                <button id="btnResetDate" class="secondary" style="display: none;">Ver Registros de Hoje</button>
+            </div>
+            
+            <div class="content-box">
+                <h2 id="recordsTitle">Registros de Ponto (Hoje)</h2>
+                <div class="records-container">
+                    <table id="recordsTable">
+                        <thead>
+                            <tr>
+                                <th>Nome</th>
+                                <th>Data</th>
+                                <th>Hora</th>
+                                <th>Tipo</th>
+                                <th>Status</th>
+                                <th>Jornada</th>
+                            </tr>
+                        </thead>
+                        <tbody id="recordsList"></tbody>
+                    </table>
+                </div>
+            </div>
+
+            <div class="content-box">
+                <h2 id="missingTitle">Usuários que ainda não bateram ponto (Hoje)</h2>
+                <div class="records-container">
+                    <table id="missingUsersTable">
+                        <thead>
+                            <tr>
+                                <th>Nome</th>
+                                <th>Horário de Entrada</th>
+                                <th>Horário de Saída</th>
+                            </tr>
+                        </thead>
+                        <tbody id="missingUsersList">
+                            </tbody>
+                    </table>
+                </div>
             </div>
         </div>
-    </div>
+    </main>
 
     <div class="modal-overlay" id="modalOverlay"></div>
     <div class="modal" id="registerModal">
@@ -84,7 +94,7 @@
                 </div>
                 <div class="form-group">
                     <label for="newPassword">Senha:</label>
-                    <input type="password" id="newPassword" required placeholder="Digite a senha">
+                    <input type="password" id="newPassword" required placeholder="Digite sua senha">
                 </div>
                 <div class="form-group">
                     <label for="entryTime">Horário de Entrada:</label>
