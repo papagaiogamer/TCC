@@ -73,6 +73,7 @@
 
 /* MODIFICADO: Usa variáveis de cor */
 body {
+    --font-primary: "SF Mono", "Consolas", "Liberation Mono", "Menlo", monospace;
     font-family: var(--font-primary);
     background-color: var(--color-canvas-subtle);
     color: var(--color-text-primary);
