@@ -1,7 +1,8 @@
 const sqlite3 = require('sqlite3').verbose();
 const path = require('path');
 
-// Cria o arquivo na raiz do projeto
+// Ajuste o caminho conforme sua estrutura. 
+// Se este arquivo está em 'models/db.js', ele salva na raiz do projeto.
 const dbPath = path.resolve(__dirname, '../database.sqlite');
 
 const db = new sqlite3.Database(dbPath, (err) => {
@@ -15,7 +16,7 @@ const db = new sqlite3.Database(dbPath, (err) => {
 
 function initDb() {
     db.serialize(() => {
-        // 1. Tabela de Usuários (Adicionado coluna 'role')
+        // 1. Tabela de Usuários (Com coluna 'role' para Admin/Visitante)
         db.run(`
             CREATE TABLE IF NOT EXISTS users (
                 id INTEGER PRIMARY KEY AUTOINCREMENT,
@@ -23,11 +24,11 @@ function initDb() {
                 cpf TEXT NOT NULL UNIQUE,
                 password TEXT NOT NULL,
                 cargo TEXT,
-                role TEXT DEFAULT 'employee' -- 'employee' ou 'visitor'
+                role TEXT DEFAULT 'employee' -- Pode ser: 'admin', 'employee', 'visitor'
             )
         `);
 
-        // 2. Tabela de Horários (Apenas para Employees)
+        // 2. Tabela de Horários (Apenas para Funcionários)
         db.run(`
             CREATE TABLE IF NOT EXISTS user_schedules (
                 id INTEGER PRIMARY KEY AUTOINCREMENT,
@@ -47,7 +48,7 @@ function initDb() {
                 date TEXT,     -- DD/MM/AAAA
                 time TEXT,     -- HH:MM:SS
                 type TEXT,     -- 'entrada' ou 'saida'
-                status TEXT,   -- 'no_horario', 'atraso'
+                status TEXT,   -- 'no_horario', 'atraso', 'visitante'
                 work_duration INTEGER, -- em minutos
                 FOREIGN KEY(user_id) REFERENCES users(id)
             )
@@ -58,8 +59,8 @@ function initDb() {
             CREATE TABLE IF NOT EXISTS certificates (
                 id INTEGER PRIMARY KEY AUTOINCREMENT,
                 user_id INTEGER,
-                date TEXT,      -- DD/MM/AAAA (A data da falta)
-                reason TEXT,    -- Motivo (ex: "Consulta médica")
+                date TEXT,      -- DD/MM/AAAA
+                reason TEXT,    -- Motivo
                 FOREIGN KEY(user_id) REFERENCES users(id)
             )
         `);

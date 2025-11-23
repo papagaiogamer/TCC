@@ -4,112 +4,197 @@ import { useSocket } from '../context/SocketContext';
 function Funcionarios() {
   const socket = useSocket();
   const [employees, setEmployees] = useState([]);
+  
+  // Controle do Modal
   const [showModal, setShowModal] = useState(false);
   const [editingId, setEditingId] = useState(null);
-  const [isVisitorMode, setIsVisitorMode] = useState(false); // NOVO
   const [message, setMessage] = useState({ text: '', type: '' });
-  const [formData, setFormData] = useState({ name: '', cpf: '', password: '', cargo: '' });
-  
-  const initialSchedule = Array.from({ length: 7 }, (_, i) => ({ day_of_week: i, entryTime: '', exitTime: '' }));
+
+  // Estado do Formulário
+  const [formData, setFormData] = useState({ 
+    name: '', 
+    cpf: '', 
+    password: '', 
+    cargo: '', 
+    role: 'employee' // Pode ser: 'employee', 'visitor', 'admin'
+  });
+
+  // Estado da Jornada (7 dias)
+  const initialSchedule = Array.from({ length: 7 }, (_, i) => ({ 
+    day_of_week: i, entryTime: '', exitTime: '' 
+  }));
   const [schedule, setSchedule] = useState(initialSchedule);
   const daysOfWeek = ['Domingo', 'Segunda', 'Terça', 'Quarta', 'Quinta', 'Sexta', 'Sábado'];
 
   useEffect(() => {
     if (!socket) return;
+
+    // Carrega a lista inicial
     socket.emit('get-employees');
+
+    // Listeners
     socket.on('employees-list', (data) => setEmployees(data));
+    
+    // Ao clicar em editar
     socket.on('employee-details', (data) => {
       if (!data.user) return;
       setEditingId(data.user.id);
-      setIsVisitorMode(data.user.role === 'visitor'); // Verifica se é visitante
-      setFormData({ name: data.user.name, cpf: data.user.cpf, cargo: data.user.cargo || '', password: '' });
       
-      if (data.user.role === 'employee') {
-          const newSchedule = [...initialSchedule];
-          data.schedule.forEach(day => {
-            newSchedule[day.day_of_week] = { day_of_week: day.day_of_week, entryTime: day.entry_time || '', exitTime: day.exit_time || '' };
-          });
-          setSchedule(newSchedule);
+      setFormData({
+        name: data.user.name,
+        cpf: data.user.cpf,
+        cargo: data.user.cargo || '',
+        password: '', // Senha sempre vazia por segurança
+        role: data.user.role || 'employee'
+      });
+
+      // Se tiver horários, preenche
+      if (data.schedule && data.schedule.length > 0) {
+        const newSchedule = [...initialSchedule];
+        data.schedule.forEach(day => {
+          newSchedule[day.day_of_week] = { 
+            day_of_week: day.day_of_week, 
+            entryTime: day.entry_time || '', 
+            exitTime: day.exit_time || '' 
+          };
+        });
+        setSchedule(newSchedule);
+      } else {
+        setSchedule(initialSchedule);
       }
+      
       setShowModal(true);
     });
+
+    // Sucesso e Erro
     const handleSuccess = (res) => {
       setMessage({ text: res.message, type: 'success' });
-      setTimeout(() => { closeModal(); socket.emit('get-employees'); }, 1000);
+      setTimeout(() => { 
+        closeModal(); 
+        socket.emit('get-employees'); // Recarrega a lista
+      }, 1000);
     };
+
     socket.on('user-registered', handleSuccess);
     socket.on('user-updated', handleSuccess);
     socket.on('user-register-error', (res) => setMessage({ text: res.message, type: 'error' }));
 
     return () => {
-      socket.off('employees-list'); socket.off('employee-details'); socket.off('user-registered'); socket.off('user-updated'); socket.off('user-register-error');
+      socket.off('employees-list');
+      socket.off('employee-details');
+      socket.off('user-registered');
+      socket.off('user-updated');
+      socket.off('user-register-error');
     };
   }, [socket]);
 
-  // Abre modal para FUNCIONÁRIO
-  const openNewEmployee = () => {
-    setEditingId(null); setIsVisitorMode(false);
-    setFormData({ name: '', cpf: '', password: '', cargo: '' }); setSchedule(initialSchedule); setMessage({ text: '', type: '' }); setShowModal(true);
-  };
-
-  // Abre modal para VISITANTE
-  const openNewVisitor = () => {
-    setEditingId(null); setIsVisitorMode(true);
-    setFormData({ name: '', cpf: '', password: '', cargo: 'Visitante' }); setMessage({ text: '', type: '' }); setShowModal(true);
+  // Função genérica para abrir modal dependendo do tipo
+  const openModal = (roleType) => {
+    setEditingId(null);
+    setFormData({ 
+      name: '', 
+      cpf: '', 
+      password: '', 
+      cargo: roleType === 'visitor' ? 'Visitante' : (roleType === 'admin' ? 'Administrador' : ''), 
+      role: roleType 
+    });
+    setSchedule(initialSchedule);
+    setMessage({ text: '', type: '' });
+    setShowModal(true);
   };
 
   const closeModal = () => { setShowModal(false); setMessage({ text: '', type: '' }); };
-  
+
   const handleInputChange = (e) => {
-    const { id, value } = e.target;
-    const fieldMap = { newName: 'name', newCpf: 'cpf', newPassword: 'password', newCargo: 'cargo' };
-    setFormData(prev => ({ ...prev, [fieldMap[id]]: value }));
+    const { name, value } = e.target;
+    setFormData(prev => ({ ...prev, [name]: value }));
   };
+
   const handleScheduleChange = (idx, field, val) => {
-    const newSchedule = [...schedule]; newSchedule[idx] = { ...newSchedule[idx], [field]: val }; setSchedule(newSchedule);
+    const newSchedule = [...schedule];
+    newSchedule[idx] = { ...newSchedule[idx], [field]: val };
+    setSchedule(newSchedule);
   };
 
   const handleSubmit = (e) => {
     e.preventDefault();
-    if (!formData.name || !formData.cpf) return setMessage({ text: 'Nome e CPF obrigatórios!', type: 'error' });
     
-    // Senha só é obrigatória para funcionário novo. Visitante usa CPF como senha automaticamente no backend.
-    if (!editingId && !isVisitorMode && !formData.password) return setMessage({ text: 'Senha obrigatória!', type: 'error' });
+    // Validações básicas
+    if (!formData.name || !formData.cpf) return setMessage({ text: 'Nome e CPF são obrigatórios!', type: 'error' });
+    
+    // Senha é obrigatória para Admin e Funcionario novos
+    if (!editingId && formData.role !== 'visitor' && !formData.password) {
+        return setMessage({ text: 'Senha é obrigatória!', type: 'error' });
+    }
 
     const dataToSend = { 
         id: editingId, 
         ...formData, 
-        role: isVisitorMode ? 'visitor' : 'employee',
-        schedule: isVisitorMode ? null : schedule // Visitante não manda schedule
+        // Se for visitante, não mandamos o schedule (é null)
+        schedule: formData.role === 'visitor' ? null : schedule 
     };
-    editingId ? socket.emit('update-user', dataToSend) : socket.emit('register-user', dataToSend);
+
+    if (editingId) {
+        socket.emit('update-user', dataToSend);
+    } else {
+        socket.emit('register-user', dataToSend);
+    }
   };
 
   return (
     <div className="container">
-      <div className="content-box" style={{display: 'flex', gap: '10px'}}>
-        <button className="btn-open-modal" onClick={openNewEmployee}>+ Novo Funcionário</button>
-        <button className="btn-open-modal secondary" onClick={openNewVisitor} style={{backgroundColor: '#6e7781', color: 'white', borderColor: '#6e7781'}}>+ Novo Visitante</button>
+      {/* Botões de Ação */}
+      <div className="content-box" style={{display: 'flex', gap: '10px', flexWrap: 'wrap'}}>
+        <button className="btn-open-modal primary" onClick={() => openModal('employee')}>
+            + Funcionário
+        </button>
+        <button className="btn-open-modal secondary" onClick={() => openModal('visitor')}>
+            + Visitante
+        </button>
+        <button className="btn-open-modal" style={{backgroundColor: '#1e293b', color: '#fff'}} onClick={() => openModal('admin')}>
+            + Admin
+        </button>
       </div>
+
+      {/* Tabela de Usuários */}
       <div className="content-box">
-        <h2>Lista de Pessoas</h2>
+        <h2>Gestão de Usuários</h2>
         <div className="records-container">
           <table>
-            <thead><tr><th>Nome</th><th>CPF</th><th>Tipo</th><th>Ações</th></tr></thead>
+            <thead>
+                <tr>
+                    <th>Nome</th>
+                    <th>CPF</th>
+                    <th>Tipo (Cargo)</th>
+                    <th>Ações</th>
+                </tr>
+            </thead>
             <tbody>
               {employees.map((emp) => (
                 <tr key={emp.id}>
                     <td>{emp.name}</td>
                     <td>{emp.cpf}</td>
                     <td>
+                        {/* Badge Colorido dependendo do cargo */}
                         <span style={{
-                            backgroundColor: emp.role === 'visitor' ? '#6e7781' : '#2da44e',
-                            color: 'white', padding: '2px 8px', borderRadius: '12px', fontSize: '12px'
+                            padding: '4px 8px', 
+                            borderRadius: '12px', 
+                            fontSize: '0.8rem',
+                            fontWeight: '600',
+                            backgroundColor: emp.role === 'admin' ? '#1e293b' : (emp.role === 'visitor' ? '#6b7280' : '#2563eb'),
+                            color: '#fff'
                         }}>
-                            {emp.role === 'visitor' ? 'Visitante' : 'Funcionário'}
+                            {emp.role === 'admin' ? 'ADMIN' : (emp.role === 'visitor' ? 'VISITANTE' : 'FUNC.')}
+                        </span>
+                        <span style={{marginLeft: '8px', color: '#666', fontSize: '0.85rem'}}>
+                            {emp.cargo}
                         </span>
                     </td>
-                    <td><button className="secondary small" onClick={() => socket.emit('get-employee-details', { id: emp.id })}>Editar</button></td>
+                    <td>
+                        <button className="secondary small" onClick={() => socket.emit('get-employee-details', { id: emp.id })}>
+                            Editar
+                        </button>
+                    </td>
                 </tr>
               ))}
             </tbody>
@@ -117,53 +202,97 @@ function Funcionarios() {
         </div>
       </div>
       
-      {/* MODAL */}
-      <div className="modal-overlay" style={{ display: showModal ? 'block' : 'none' }} onClick={closeModal}></div>
-      <div className="modal" style={{ display: showModal ? 'flex' : 'none' }}>
-        <div className="modal-header">
-            <h2 className="modal-title">
-                {editingId ? 'Editar' : (isVisitorMode ? 'Registrar Visitante' : 'Registrar Funcionário')}
-            </h2>
-            <button className="modal-close" onClick={closeModal}>✕</button>
-        </div>
-        <div className="modal-body">
-          <form>
-            <div className="form-group"><label>Nome:</label><input type="text" id="newName" value={formData.name} onChange={handleInputChange} required /></div>
-            <div className="form-group"><label>CPF:</label><input type="text" id="newCpf" value={formData.cpf} onChange={handleInputChange} required disabled={!!editingId} /></div>
-            
-            {/* Senha e Cargo só aparecem se NÃO for visitante em modo criação */}
-            {!isVisitorMode && (
-                <>
-                    <div className="form-group"><label>Senha:</label><input type="password" id="newPassword" value={formData.password} onChange={handleInputChange} placeholder={editingId ? "Vazio para manter" : ""} /></div>
-                    <div className="form-group"><label>Cargo:</label><input type="text" id="newCargo" value={formData.cargo} onChange={handleInputChange} /></div>
-                </>
-            )}
-
-            {/* Jornada só aparece para Funcionários */}
-            {!isVisitorMode && (
-                <>
-                    <h3>Jornada</h3>
-                    <div id="schedule-editor">
-                    {daysOfWeek.map((day, idx) => (
-                        <div className="form-group schedule-day-row" key={idx}>
-                        <label>{day}:</label>
-                        <input type="time" value={schedule[idx].entryTime} onChange={(e) => handleScheduleChange(idx, 'entryTime', e.target.value)} />
-                        <span>às</span>
-                        <input type="time" value={schedule[idx].exitTime} onChange={(e) => handleScheduleChange(idx, 'exitTime', e.target.value)} />
-                        </div>
-                    ))}
+      {/* MODAL UNIFICADO */}
+      {showModal && (
+        <>
+            <div className="modal-overlay" onClick={closeModal}></div>
+            <div className="modal">
+                <div className="modal-header">
+                    <h2 className="modal-title">
+                        {editingId ? 'Editar Usuário' : `Novo ${formData.role === 'visitor' ? 'Visitante' : (formData.role === 'admin' ? 'Admin' : 'Funcionário')}`}
+                    </h2>
+                    <button className="modal-close" onClick={closeModal}>✕</button>
+                </div>
+                
+                <div className="modal-body">
+                <form onSubmit={handleSubmit}>
+                    <div className="form-group">
+                        <label>Nome:</label>
+                        <input type="text" name="name" value={formData.name} onChange={handleInputChange} required />
                     </div>
-                </>
-            )}
+                    <div className="form-group">
+                        <label>CPF:</label>
+                        <input type="text" name="cpf" value={formData.cpf} onChange={handleInputChange} required disabled={!!editingId} />
+                    </div>
+                    
+                    {/* Campos de Senha e Cargo (Escondidos se for Visitante Novo, pois visitante usa CPF como senha) */}
+                    {formData.role !== 'visitor' && (
+                        <>
+                            <div className="form-group">
+                                <label>Senha:</label>
+                                <input 
+                                    type="password" 
+                                    name="password" 
+                                    value={formData.password} 
+                                    onChange={handleInputChange} 
+                                    placeholder={editingId ? "Deixe em branco para não alterar" : "Senha de acesso"} 
+                                />
+                            </div>
+                            <div className="form-group">
+                                <label>Cargo:</label>
+                                <input type="text" name="cargo" value={formData.cargo} onChange={handleInputChange} />
+                            </div>
+                        </>
+                    )}
 
-            {isVisitorMode && <p style={{color: '#666', marginTop: '10px'}}>ℹ️ Visitantes usam o CPF como senha para registrar entrada/saída.</p>}
+                    {formData.role === 'visitor' && (
+                        <p style={{fontSize: '0.9rem', color: '#666', marginBottom: '15px'}}>
+                            ℹ️ Visitantes usam o próprio CPF como senha para bater ponto.
+                        </p>
+                    )}
 
-            {message.text && <div id="registerMessage" className={message.type}>{message.text}</div>}
-          </form>
-        </div>
-        <div className="modal-footer"><button className="secondary" onClick={closeModal}>Cancelar</button><button className="primary" onClick={handleSubmit}>Salvar</button></div>
-      </div>
+                    {/* Editor de Jornada (Apenas para Funcionários e Admins) */}
+                    {formData.role !== 'visitor' && (
+                        <>
+                            <h3 style={{fontSize: '1rem', marginTop: '20px', borderTop: '1px solid #eee', paddingTop: '10px'}}>
+                                Jornada de Trabalho
+                            </h3>
+                            <div id="schedule-editor">
+                            {daysOfWeek.map((day, idx) => (
+                                <div className="schedule-day-row" key={idx}>
+                                <label>{day}:</label>
+                                <input type="time" value={schedule[idx].entryTime} onChange={(e) => handleScheduleChange(idx, 'entryTime', e.target.value)} />
+                                <span>às</span>
+                                <input type="time" value={schedule[idx].exitTime} onChange={(e) => handleScheduleChange(idx, 'exitTime', e.target.value)} />
+                                </div>
+                            ))}
+                            </div>
+                        </>
+                    )}
+
+                    {message.text && (
+                        <div style={{
+                            marginTop: '10px', 
+                            padding: '10px', 
+                            borderRadius: '4px', 
+                            backgroundColor: message.type === 'error' ? '#fee2e2' : '#dcfce7',
+                            color: message.type === 'error' ? '#991b1b' : '#166534'
+                        }}>
+                            {message.text}
+                        </div>
+                    )}
+
+                    <div className="modal-footer" style={{marginTop: '20px'}}>
+                        <button type="button" className="secondary" onClick={closeModal}>Cancelar</button>
+                        <button type="submit" className="primary">Salvar</button>
+                    </div>
+                </form>
+                </div>
+            </div>
+        </>
+      )}
     </div>
   );
 }
+
 export default Funcionarios;
