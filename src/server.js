@@ -4,51 +4,35 @@ const socketIO = require('socket.io');
 const path = require('path');
 const passport = require('passport');
 const session = require('express-session');
-const bcrypt = require('bcrypt'); // Segurança de senha
+const bcrypt = require('bcrypt');
 
 const app = express();
 const server = http.createServer(app);
 
-// Configuração do CORS para aceitar o React
 const io = socketIO(server, {
     cors: {
-        origin: "http://localhost:5173", // URL do seu front-end Vite
+        origin: "http://localhost:5173",
         methods: ["GET", "POST"]
     }
 });
 
-// Middlewares
 app.use(express.json());
-// app.use(express.static(path.join(__dirname, 'public'))); // Opcional, já que estamos usando React separado
-app.use(session({
-    secret: 'sua_chave_secreta',
-    resave: false,
-    saveUninitialized: false
-}));
+app.use(session({ secret: 'sua_chave_secreta', resave: false, saveUninitialized: false }));
 app.use(passport.initialize());
 app.use(passport.session());
 
-// Banco de dados SQLite
 const db = require('./models/db');
 
-// Configuração do Passport (Serialização)
-passport.serializeUser((user, done) => {
-    done(null, user.id);
-});
-passport.deserializeUser((id, done) => {
-    db.get('SELECT * FROM users WHERE id = ?', [id], (err, user) => {
-        done(err, user);
-    });
-});
+// Helpers
+passport.serializeUser((user, done) => done(null, user.id));
+passport.deserializeUser((id, done) => db.get('SELECT * FROM users WHERE id = ?', [id], (err, user) => done(err, user)));
 
-/* Helper function para calcular minutos a partir de "HH:MM" */
 function parseTimeToMinutes(timeStr) {
     if (!timeStr) return 0;
     const [hours, minutes] = timeStr.split(':').map(Number);
     return (hours * 60) + minutes;
 }
 
-/* Helper function para formatar data JS para DD/MM/AAAA */
 const getFormattedDate = (dateObj) => {
     const d = dateObj || new Date();
     const day = String(d.getDate()).padStart(2, '0');
@@ -57,49 +41,45 @@ const getFormattedDate = (dateObj) => {
     return `${day}/${month}/${year}`;
 };
 
-// === SOCKET.IO ===
 io.on('connection', (socket) => {
     console.log('🔗 Cliente conectado:', socket.id);
 
     // ===============================================
-    // 1. REGISTRO DE USUÁRIO (COM BCRYPT)
+    // 1. REGISTRO (FUNCIONÁRIO E VISITANTE)
     // ===============================================
     socket.on('register-user', async (data) => {
         db.get('SELECT * FROM users WHERE cpf = ?', [data.cpf], async (err, row) => {
-            if (row) {
-                socket.emit('user-register-error', { message: 'CPF já cadastrado!' });
-                return;
-            }
+            if (row) return socket.emit('user-register-error', { message: 'CPF já cadastrado!' });
 
             try {
-                // Criptografa a senha antes de salvar
-                const hashedPassword = await bcrypt.hash(data.password, 10);
+                // Se for visitante, a senha é o próprio CPF (para facilitar)
+                // Se for funcionário, usa a senha enviada
+                const plainPassword = data.role === 'visitor' ? data.cpf : data.password;
+                const hashedPassword = await bcrypt.hash(plainPassword, 10);
+
+                const role = data.role || 'employee'; // Padrão é employee
 
                 db.run(
-                    'INSERT INTO users (name, cpf, password, cargo) VALUES (?, ?, ?, ?)',
-                    [data.name, data.cpf, hashedPassword, data.cargo],
+                    'INSERT INTO users (name, cpf, password, cargo, role) VALUES (?, ?, ?, ?, ?)',
+                    [data.name, data.cpf, hashedPassword, data.cargo, role],
                     function (err) {
-                        if (err) {
-                            socket.emit('user-register-error', { message: 'Erro ao registrar usuário!' });
-                            return;
-                        }
-                        const newUserId = this.lastID;
-                        const stmt = db.prepare('INSERT INTO user_schedules (user_id, day_of_week, entry_time, exit_time) VALUES (?, ?, ?, ?)');
+                        if (err) return socket.emit('user-register-error', { message: 'Erro ao registrar!' });
                         
-                        db.serialize(() => {
-                            data.schedule.forEach(day => {
-                                // Salva os horários (mesmo que vazios)
-                                stmt.run(newUserId, day.day_of_week, day.entryTime, day.exitTime);
+                        // Só cria agenda se for FUNCIONÁRIO
+                        if (role === 'employee' && data.schedule) {
+                            const newUserId = this.lastID;
+                            const stmt = db.prepare('INSERT INTO user_schedules (user_id, day_of_week, entry_time, exit_time) VALUES (?, ?, ?, ?)');
+                            db.serialize(() => {
+                                data.schedule.forEach(day => stmt.run(newUserId, day.day_of_week, day.entryTime, day.exitTime));
+                                stmt.finalize();
                             });
-                            stmt.finalize();
-                        });
-
-                        socket.emit('user-registered', { message: 'Usuário registrado com sucesso!' });
+                        }
+                        socket.emit('user-registered', { message: role === 'visitor' ? 'Visitante liberado!' : 'Funcionário registrado!' });
                     }
                 );
             } catch (error) {
                 console.error(error);
-                socket.emit('user-register-error', { message: 'Erro ao processar senha.' });
+                socket.emit('user-register-error', { message: 'Erro interno.' });
             }
         });
     });
@@ -108,141 +88,147 @@ io.on('connection', (socket) => {
     // 2. REGISTRO DE PONTO (LOGIN)
     // ===============================================
     socket.on('register-time', (data) => {
-        const date = getFormattedDate(new Date()); // DD/MM/AAAA
+        const date = getFormattedDate(new Date());
         const time = new Date().toLocaleTimeString('pt-BR', { hour12: false });
-        const dayOfWeek = new Date().getDay(); // 0 (Dom) a 6 (Sab)
+        const dayOfWeek = new Date().getDay();
 
-        // Busca usuário pelo CPF
         db.get('SELECT * FROM users WHERE cpf = ?', [data.cpf], async (err, user) => {
-            if (!user) {
-                socket.emit('auth-error', { message: 'CPF não encontrado!' });
-                return;
-            }
+            if (!user) return socket.emit('auth-error', { message: 'CPF não encontrado!' });
 
-            // Compara a senha enviada com o hash no banco
             const match = await bcrypt.compare(data.password, user.password);
-            if (!match) {
-                socket.emit('auth-error', { message: 'Senha incorreta!' });
-                return;
-            }
+            if (!match) return socket.emit('auth-error', { message: 'Senha incorreta!' });
 
-            // Verifica agendamento para hoje
-            db.get('SELECT * FROM user_schedules WHERE user_id = ? AND day_of_week = ?', [user.id, dayOfWeek], (err, schedule) => {
-                if (err || !schedule || !schedule.entry_time || schedule.entry_time.trim() === '') {
-                    socket.emit('auth-error', { message: 'Você não está agendado para trabalhar hoje.' });
-                    return;
-                }
-
-                // Verifica registros já existentes hoje
-                db.all('SELECT * FROM time_records WHERE user_id = ? AND date = ?', [user.id, date], (err, records) => {
-                    if (err) return socket.emit('auth-error', { message: 'Erro ao consultar registros!' });
-                    
-                    if (records.length >= 2) {
-                        socket.emit('auth-error', { message: 'Você já registrou seus dois pontos hoje!' });
-                        return;
+            // Lógica Diferente para VISITANTES vs FUNCIONÁRIOS
+            if (user.role === 'visitor') {
+                // === VISITANTE (Ponto Livre) ===
+                registrarPonto(user, date, time, null); // Null = sem schedule para validar
+            } else {
+                // === FUNCIONÁRIO (Valida Horário) ===
+                db.get('SELECT * FROM user_schedules WHERE user_id = ? AND day_of_week = ?', [user.id, dayOfWeek], (err, schedule) => {
+                    if (err || !schedule || !schedule.entry_time || schedule.entry_time.trim() === '') {
+                        return socket.emit('auth-error', { message: 'Você não está agendado para hoje.' });
                     }
+                    registrarPonto(user, date, time, schedule);
+                });
+            }
+        });
 
-                    const type = records.length === 0 ? 'entrada' : 'saida';
-                    let status = null;
-                    let workDuration = null;
+        function registrarPonto(user, date, time, schedule) {
+            db.all('SELECT * FROM time_records WHERE user_id = ? AND date = ?', [user.id, date], (err, records) => {
+                if (records.length >= 2) return socket.emit('auth-error', { message: 'Já registrou entrada e saída hoje!' });
 
-                    // Lógica de Entrada (Atraso)
+                const type = records.length === 0 ? 'entrada' : 'saida';
+                let status = 'visitante'; // Padrão para visitante
+                let workDuration = null;
+
+                // Se tiver schedule (Funcionário), calcula atrasos
+                if (schedule) {
                     if (type === 'entrada') {
                         const entryTotal = parseTimeToMinutes(schedule.entry_time);
                         const currentTotal = parseTimeToMinutes(time);
                         status = currentTotal > entryTotal + 10 ? 'atraso' : 'no_horario';
-                    } 
-                    // Lógica de Saída (Cedo demais / Duração)
-                    else if (type === 'saida') {
+                    } else if (type === 'saida') {
                         const currentTotal = parseTimeToMinutes(time);
                         const exitTotal = parseTimeToMinutes(schedule.exit_time);
-                        
                         if (currentTotal < exitTotal - 10) {
                             return socket.emit('auth-error', { message: `Muito cedo! Saída apenas às ${schedule.exit_time}.` });
                         }
-                        
                         const entryRecord = records[0];
-                        if (entryRecord) {
-                            workDuration = currentTotal - parseTimeToMinutes(entryRecord.time);
-                        }
+                        if (entryRecord) workDuration = currentTotal - parseTimeToMinutes(entryRecord.time);
                     }
+                } else if (type === 'saida' && records[0]) {
+                     // Visitante calculando duração
+                     const currentTotal = parseTimeToMinutes(time);
+                     const entryRecord = records[0];
+                     workDuration = currentTotal - parseTimeToMinutes(entryRecord.time);
+                }
 
-                    // Salva o registro
-                    db.run(
-                        'INSERT INTO time_records (user_id, date, time, type, status, work_duration) VALUES (?, ?, ?, ?, ?, ?)',
-                        [user.id, date, time, type, status, workDuration],
-                        function (err) {
-                            if (err) return socket.emit('auth-error', { message: 'Erro ao salvar ponto!' });
-                            
-                            // Atualiza a tabela do Dashboard em tempo real
-                            db.all('SELECT tr.*, u.name as userId FROM time_records tr JOIN users u ON tr.user_id = u.id WHERE tr.date = ?', [date], (err, recs) => {
-                                io.emit('time-registered', recs);
-                            });
-                            // Força atualização da lista de ausentes
-                            io.emit('get-missing-users-trigger');
-                            
-                            socket.emit('auth-success', { message: `Ponto de ${type} registrado com sucesso!` });
-                        }
-                    );
-                });
+                db.run(
+                    'INSERT INTO time_records (user_id, date, time, type, status, work_duration) VALUES (?, ?, ?, ?, ?, ?)',
+                    [user.id, date, time, type, status, workDuration],
+                    function (err) {
+                        if (err) return socket.emit('auth-error', { message: 'Erro ao salvar.' });
+                        
+                        // Atualiza Dashboards
+                        db.all('SELECT tr.*, u.name as userId FROM time_records tr JOIN users u ON tr.user_id = u.id WHERE tr.date = ?', [date], (err, recs) => {
+                            io.emit('time-registered', recs);
+                        });
+                        io.emit('get-missing-users-trigger'); // Atualiza ausentes
+                        
+                        socket.emit('auth-success', { message: `Ponto de ${type} registrado! (${user.role === 'visitor' ? 'Visitante' : 'Funcionário'})` });
+                    }
+                );
             });
-        });
+        }
     });
 
     // ===============================================
-    // 3. DASHBOARD & DADOS
+    // 3. ATESTADOS (JUSTIFICATIVA DE FALTA)
     // ===============================================
-
-    // Lista de registros do dia
-    socket.on('get-records', () => {
-        const date = getFormattedDate(new Date());
-        db.all('SELECT tr.*, u.name as userId FROM time_records tr JOIN users u ON tr.user_id = u.id WHERE tr.date = ?', [date], (err, records) => {
-            socket.emit('time-records', records || []);
-        });
+    socket.on('register-certificate', (data) => {
+        // data = { userId, date, reason }
+        db.run(
+            'INSERT INTO certificates (user_id, date, reason) VALUES (?, ?, ?)',
+            [data.userId, data.date, data.reason],
+            function(err) {
+                if (err) return socket.emit('user-register-error', { message: 'Erro ao salvar atestado.' });
+                
+                // Avisa sucesso e força atualização da lista de ausentes
+                socket.emit('certificate-registered', { message: 'Atestado registrado com sucesso!' });
+                
+                // Se a data do atestado for a que está sendo vista, atualiza a lista
+                io.emit('get-missing-users-trigger'); 
+            }
+        );
     });
 
-    // LISTA DE AUSENTES (Corrigido)
+    // ===============================================
+    // 4. LISTA DE AUSENTES (Com Atestado)
+    // ===============================================
     const sendMissingUsers = (targetSocket, targetDateStr) => {
-        let dateToCheck;
-        let dayOfWeek;
+        let dateToCheck, dayOfWeek;
 
         if (targetDateStr) {
-            // Data do Histórico (YYYY-MM-DD -> DD/MM/AAAA)
             const [year, month, day] = targetDateStr.split('-');
-            // Cria data ao meio-dia para pegar o dia da semana correto sem fuso horário
             const d = new Date(year, month - 1, day, 12, 0, 0); 
             dateToCheck = `${day}/${month}/${year}`;
             dayOfWeek = d.getDay();
         } else {
-            // Data de Hoje
             dateToCheck = getFormattedDate(new Date());
             dayOfWeek = new Date().getDay();
         }
 
-        console.log(`🔍 Buscando ausentes para: ${dateToCheck} (Dia: ${dayOfWeek})`);
-
-        // 1. Pega todos os usuários e seus horários para ESSE dia da semana
+        // 1. Busca Funcionários que trabalham nesse dia
         db.all(
             `SELECT u.id, u.name, s.entry_time, s.exit_time 
              FROM users u 
-             LEFT JOIN user_schedules s ON u.id = s.user_id AND s.day_of_week = ?`, 
+             LEFT JOIN user_schedules s ON u.id = s.user_id AND s.day_of_week = ?
+             WHERE u.role = 'employee'`, // Apenas funcionários podem "faltar"
             [dayOfWeek], 
             (err, allUsers) => {
-                if (err) return console.error(err);
-
-                // 2. Filtra quem DEVERIA trabalhar (tem horário de entrada preenchido)
+                if (err) return;
                 const workingUsers = allUsers.filter(u => u.entry_time && u.entry_time.trim() !== '');
 
-                // 3. Pega quem JÁ bateu ponto nessa data
+                // 2. Busca quem bateu ponto
                 db.all('SELECT user_id FROM time_records WHERE date = ?', [dateToCheck], (err, records) => {
-                    if (err) return console.error(err);
-                    
                     const usersWithRecords = new Set(records.map(r => r.user_id));
-                    
-                    // 4. Quem deveria trabalhar - Quem já bateu ponto = Ausentes
-                    const missingUsers = workingUsers.filter(u => !usersWithRecords.has(u.id));
-                    
-                    targetSocket.emit('missing-users', missingUsers);
+
+                    // 3. Busca quem tem ATESTADO
+                    db.all('SELECT user_id, reason FROM certificates WHERE date = ?', [dateToCheck], (err, certs) => {
+                        const certMap = {}; // Mapa ID -> Motivo
+                        certs.forEach(c => certMap[c.user_id] = c.reason);
+
+                        // 4. Monta a lista final
+                        const missingList = workingUsers
+                            .filter(u => !usersWithRecords.has(u.id)) // Quem não foi
+                            .map(u => ({
+                                ...u,
+                                isJustified: !!certMap[u.id], // Tem atestado?
+                                reason: certMap[u.id] || null
+                            }));
+
+                        targetSocket.emit('missing-users', missingList);
+                    });
                 });
             }
         );
@@ -251,34 +237,32 @@ io.on('connection', (socket) => {
     socket.on('get-missing-users', () => { sendMissingUsers(socket); });
     socket.on('get-missing-users-trigger', () => { sendMissingUsers(io); });
 
-    // Histórico
+    // ===============================================
+    // 5. DEMAIS ROTAS (Histórico, Funcionários...)
+    // ===============================================
+    socket.on('get-records', () => {
+        const date = getFormattedDate(new Date());
+        db.all('SELECT tr.*, u.name as userId, u.role FROM time_records tr JOIN users u ON tr.user_id = u.id WHERE tr.date = ?', [date], (err, records) => {
+            socket.emit('time-records', records || []);
+        });
+    });
+
     socket.on('get-history', (data) => {
         if (!data.date) return;
         const [year, month, day] = data.date.split('-');
-        const formattedDate = `${day}/${month}/${year}`; // DD/MM/AAAA
-
-        db.all(
-            'SELECT tr.*, u.name as userId FROM time_records tr JOIN users u ON tr.user_id = u.id WHERE tr.date = ?',
-            [formattedDate],
-            (err, records) => {
-                socket.emit('time-records', records || []);
-            }
-        );
-        sendMissingUsers(socket, data.date); // Passa YYYY-MM-DD
+        const formattedDate = `${day}/${month}/${year}`;
+        db.all('SELECT tr.*, u.name as userId, u.role FROM time_records tr JOIN users u ON tr.user_id = u.id WHERE tr.date = ?', [formattedDate], (err, r) => socket.emit('time-records', r));
+        sendMissingUsers(socket, data.date);
     });
 
-    // ===============================================
-    // 4. FUNCIONÁRIOS
-    // ===============================================
     socket.on('get-employees', () => {
-        db.all('SELECT id, name, cpf, cargo FROM users', (err, rows) => socket.emit('employees-list', rows || []));
+        db.all('SELECT id, name, cpf, cargo, role FROM users', (err, rows) => socket.emit('employees-list', rows || []));
     });
 
     socket.on('get-employee-details', (data) => {
         const responseData = {};
-        db.get('SELECT id, name, cpf, cargo FROM users WHERE id = ?', [data.id], (err, user) => {
-            if (!user) return socket.emit('user-register-error', { message: 'Usuário não encontrado.' });
-            
+        db.get('SELECT * FROM users WHERE id = ?', [data.id], (err, user) => {
+            if (!user) return;
             responseData.user = user;
             db.all('SELECT * FROM user_schedules WHERE user_id = ? ORDER BY day_of_week ASC', [data.id], (err, sched) => {
                 responseData.schedule = sched;
@@ -287,32 +271,26 @@ io.on('connection', (socket) => {
         });
     });
 
-    socket.on('update-user', async (data) => {
+    socket.on('update-user', async (data) => { /* Mesma lógica de atualização anterior */ 
         db.run('UPDATE users SET name = ?, cargo = ? WHERE id = ?', [data.name, data.cargo, data.id], async function(err) {
-            if (err) return socket.emit('user-register-error', { message: 'Erro ao salvar.' });
-
-            // Se enviou senha nova, atualiza com hash
             if (data.password && data.password.trim() !== '') {
-                try {
-                    const hashedPassword = await bcrypt.hash(data.password, 10);
-                    db.run('UPDATE users SET password = ? WHERE id = ?', [hashedPassword, data.id]);
-                } catch(e) { console.error(e); }
+                const hashedPassword = await bcrypt.hash(data.password, 10);
+                db.run('UPDATE users SET password = ? WHERE id = ?', [hashedPassword, data.id]);
             }
-
-            db.serialize(() => {
-                const stmt = db.prepare('UPDATE user_schedules SET entry_time = ?, exit_time = ? WHERE user_id = ? AND day_of_week = ?');
-                data.schedule.forEach(day => {
-                    stmt.run(day.entryTime, day.exitTime, data.id, day.day_of_week);
+            if (data.schedule) { // Só atualiza schedule se vier no pacote
+                db.serialize(() => {
+                    const stmt = db.prepare('UPDATE user_schedules SET entry_time = ?, exit_time = ? WHERE user_id = ? AND day_of_week = ?');
+                    data.schedule.forEach(day => stmt.run(day.entryTime, day.exitTime, data.id, day.day_of_week));
+                    stmt.finalize(() => socket.emit('user-updated', { message: 'Atualizado!' }));
                 });
-                stmt.finalize((err) => {
-                    socket.emit('user-updated', { message: 'Funcionário atualizado com sucesso!' });
-                });
-            });
+            } else {
+                socket.emit('user-updated', { message: 'Atualizado!' });
+            }
         });
     });
 });
 
 const PORT = process.env.PORT || 3000;
 server.listen(PORT, () => {
-    console.log(`🚀 Servidor Seguro rodando na porta ${PORT}`);
+    console.log(`🚀 Servidor com Visitantes e Atestados na porta ${PORT}`);
 });

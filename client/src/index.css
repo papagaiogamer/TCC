@@ -1,525 +1,491 @@
 /* ======================================================= */
-/* 1. VARIÁVEIS DE TEMA (CLARO E ESCURO)                 */
+/* 1. VARIÁVEIS DE TEMA & CORES (Paleta Moderna)           */
 /* ======================================================= */
-
-/* :root define o TEMA CLARO (Padrão) */
 :root {
-    --color-canvas-default: #ffffff;
-    --color-canvas-subtle: #f6f8fa;
-    --color-border-default: #d0d7de;
-    --color-border-muted: #d8dee4;
-    --color-neutral-muted: rgba(175,184,193,0.2);
-    --color-accent-fg: #0969da;
-    --color-accent-hover: #054da7;
-    --color-success-fg: #1a7f37;
-    --color-danger-fg: #cf222e;
-    --color-primer-shadow-inset: inset 0 1px 0 rgba(208,215,222,0.2);
+  /* TEMA CLARO */
+  --bg-body: #f3f4f6;          /* Cinza bem claro para o fundo */
+  --bg-card: #ffffff;          /* Branco para os cartões */
+  --bg-sidebar: #1e293b;       /* Azul escuro moderno para sidebar */
+  
+  --text-primary: #1f2937;
+  --text-secondary: #6b7280;
+  --text-sidebar: #e2e8f0;
+  
+  --border-color: #e5e7eb;
+  
+  --primary-color: #2563eb;    /* Azul Royal */
+  --primary-hover: #1d4ed8;
+  
+  --success-bg: #dcfce7;
+  --success-text: #166534;
+  
+  --danger-bg: #fee2e2;
+  --danger-text: #991b1b;
+  
+  --warning-bg: #ffedd5;
+  --warning-text: #9a3412;
+  
+  --radius-lg: 16px;           /* Cantos bem arredondados para cards */
+  --radius-md: 8px;            /* Cantos médios para inputs/botões */
+  --radius-sm: 4px;            /* Cantos pequenos */
+  
+  --shadow-sm: 0 1px 2px 0 rgb(0 0 0 / 0.05);
+  --shadow-md: 0 4px 6px -1px rgb(0 0 0 / 0.1), 0 2px 4px -2px rgb(0 0 0 / 0.1);
+  --shadow-lg: 0 10px 15px -3px rgb(0 0 0 / 0.1);
 
-    /* Cores de Texto */
-    --color-text-primary: #24292f;
-    --color-text-secondary: #57606a;
-    --color-text-link: #0969da;
-
-    /* Botões e Header */
-    --color-btn-bg: #f6f8fa;
-    --color-btn-hover-bg: #f3f4f6;
-    --color-btn-border: rgba(27,31,36,0.15);
-    --color-header-bg: #24292f;
-    --color-header-text: #ffffff;
-    --color-sidebar-bg: #24292f;
-    --color-sidebar-text: #c9d1d9;
-    --color-sidebar-hover-bg: #30363d;
+  --font-family: 'Inter', -apple-system, BlinkMacSystemFont, "Segoe UI", Helvetica, Arial, sans-serif;
 }
 
-/* NOVO: Define o TEMA ESCURO (GitHub Primer Dark) */
+/* TEMA ESCURO */
 [data-theme="dark"] {
-    --color-canvas-default: #0d1117;
-    --color-canvas-subtle: #161b22;
-    --color-border-default: #30363d;
-    --color-border-muted: #21262d;
-    --color-neutral-muted: rgba(110,118,129,0.2);
-    --color-accent-fg: #58a6ff;
-    --color-accent-hover: #79c0ff;
-    --color-success-fg: #3fb950;
-    --color-danger-fg: #f85149;
-    --color-primer-shadow-inset: inset 0 1px 0 rgba(208,215,222,0.1);
+  --bg-body: #0f172a;
+  --bg-card: #1e293b;
+  --bg-sidebar: #0f172a; /* Sidebar se funde ou fica um pouco diferente */
+  
+  --text-primary: #f8fafc;
+  --text-secondary: #94a3b8;
+  --text-sidebar: #94a3b8;
+  
+  --border-color: #334155;
+  
+  --primary-color: #3b82f6;
+  --primary-hover: #60a5fa;
 
-    /* Cores de Texto */
-    --color-text-primary: #c9d1d9;
-    --color-text-secondary: #8b949e;
-    --color-text-link: #58a6ff;
-
-    /* Botões e Header */
-    --color-btn-bg: #21262d;
-    --color-btn-hover-bg: #30363d;
-    --color-btn-border: rgba(240,246,252,0.1);
-    --color-header-bg: #161b22;
-    --color-header-text: #f0f6fc;
-    --color-sidebar-bg: #161b22; /* Sidebar um pouco mais escura no tema escuro */
-    --color-sidebar-text: #8b949e;
-    --color-sidebar-hover-bg: #21262d;
+  --success-bg: #064e3b; /* Verde escuro */
+  --success-text: #6ee7b7; /* Texto claro */
+  
+  --danger-bg: #7f1d1d;
+  --danger-text: #fca5a5;
+  
+  --warning-bg: #7c2d12;
+  --warning-text: #fdba74;
 }
 
-
 /* ======================================================= */
-/* 2. ESTILOS GERAIS (Usam as variáveis)                   */
+/* 2. RESET & ESTRUTURA GLOBAL                             */
 /* ======================================================= */
-
 * {
-    margin: 0;
-    padding: 0;
-    box-sizing: border-box;
+  box-sizing: border-box;
+  margin: 0;
+  padding: 0;
 }
 
-/* MODIFICADO: Usa variáveis de cor */
 body {
-    --font-primary: "SF Mono", "Consolas", "Liberation Mono", "Menlo", monospace;
-    font-family: var(--font-primary);
-    background-color: var(--color-canvas-subtle);
-    color: var(--color-text-primary);
-    line-height: 1.5;
-    padding-top: 70px;
-    transition: background-color 0.2s, color 0.2s; /* Transição suave */
+  font-family: var(--font-family);
+  background-color: var(--bg-body);
+  color: var(--text-primary);
+  line-height: 1.5;
+  transition: background-color 0.3s ease, color 0.3s ease;
+  -webkit-font-smoothing: antialiased;
 }
 
-/* Container principal */
-.container {
-    max-width: 980px;
-    margin: 40px auto;
-    padding: 0 16px;
+/* Layout Principal */
+.dashboard-layout {
+  display: flex;
+  min-height: 100vh;
 }
 
-/* MODIFICADO: Usa variáveis de cor */
+/* ======================================================= */
+/* 3. SIDEBAR (MODERNA)                                    */
+/* ======================================================= */
+.sidebar {
+  width: 260px;
+  background-color: var(--bg-sidebar);
+  color: var(--text-sidebar);
+  height: 100vh;
+  position: fixed;
+  display: flex;
+  flex-direction: column;
+  justify-content: space-between;
+  border-right: 1px solid var(--border-color);
+  box-shadow: 4px 0 24px rgba(0,0,0,0.02);
+  z-index: 50;
+}
+
+.sidebar-header {
+  padding: 24px;
+  border-bottom: 1px solid rgba(255,255,255,0.1);
+}
+
+.sidebar-header h3 {
+  font-size: 1.25rem;
+  font-weight: 700;
+  color: #fff;
+  letter-spacing: -0.025em;
+}
+
+.sidebar-menu {
+  list-style: none;
+  padding: 16px;
+  flex-grow: 1;
+}
+
+.sidebar-menu li {
+  margin-bottom: 4px;
+}
+
+.sidebar-menu a {
+  display: flex;
+  align-items: center;
+  padding: 12px 16px;
+  border-radius: var(--radius-md);
+  color: var(--text-sidebar);
+  text-decoration: none;
+  font-weight: 500;
+  transition: all 0.2s ease;
+}
+
+.sidebar-menu a:hover {
+  background-color: rgba(255,255,255,0.05);
+  color: #fff;
+  transform: translateX(4px); /* Efeito de slide */
+}
+
+.sidebar-menu a.active {
+  background-color: var(--primary-color);
+  color: #fff;
+  box-shadow: 0 4px 12px rgba(37, 99, 235, 0.3);
+}
+
+.sidebar-footer {
+  padding: 20px;
+  border-top: 1px solid rgba(255,255,255,0.1);
+}
+
+/* ======================================================= */
+/* 4. CONTEÚDO PRINCIPAL                                   */
+/* ======================================================= */
+.main-content {
+  margin-left: 260px;
+  flex: 1;
+  padding: 32px;
+  /*max-width: 1600px; /* Evita que estique demais em monitores 4k */
+  width: 100%;
+}
+
+/* Header da Página */
 .header {
-    background-color: var(--color-header-bg);
-    color: var(--color-header-text);
-    padding: 14px 0;
-    position: fixed;
-    top: 0;
-    left: 0;
-    width: 100%;
-    z-index: 1000;
-    box-shadow: 0 1px 0 rgba(0, 0, 0, 0.1);
-    border-bottom: 1px solid var(--color-border-default);
+  margin-bottom: 32px;
 }
 .header h1 {
-    max-width: 980px;
-    margin: 0 auto;
-    padding: 0 16px;
-    font-size: 20px;
-    font-weight: 600;
+  font-size: 1.875rem;
+  font-weight: 800;
+  color: var(--text-primary);
+  letter-spacing: -0.025em;
 }
 
-/* ============================= */
-/* Layout Sidebar (MODIFICADO)   */
-/* ============================= */
-body.dashboard-layout {
-    display: flex;
-    padding-top: 0;
-}
-
-.dashboard-layout .sidebar {
-    width: 220px;
-    background-color: var(--color-sidebar-bg);
-    color: var(--color-sidebar-text);
-    height: 100vh;
-    position: fixed;
-    top: 0;
-    left: 0;
-    padding: 20px 0;
-    z-index: 100;
-    border-right: 1px solid var(--color-border-default);
-    display: flex; /* Adicionado para o 'footer' do toggle */
-    flex-direction: column; /* Adicionado para o 'footer' do toggle */
-}
-.dashboard-layout .sidebar-header {
-    padding: 0 20px;
-    margin-bottom: 20px;
-    font-size: 24px;
-    border-bottom: 1px solid var(--color-border-default);
-    padding-bottom: 15px;
-    color: var(--color-header-text);
-}
-.dashboard-layout .sidebar-menu {
-    list-style: none;
-    padding: 0;
-    margin: 0;
-    flex-grow: 1; /* Faz o menu ocupar o espaço */
-}
-.dashboard-layout .sidebar-menu li a {
-    display: block;
-    padding: 12px 20px;
-    text-decoration: none;
-    color: var(--color-sidebar-text);
-    transition: background-color 0.2s;
-}
-.dashboard-layout .sidebar-menu li a:hover {
-    background-color: var(--color-sidebar-hover-bg);
-}
-.dashboard-layout .sidebar-menu li a.active {
-    background-color: var(--color-accent-fg);
-    color: var(--color-header-text);
-    font-weight: 600;
-}
-
-/* NOVO: Footer da Sidebar (para o toggle) */
-.dashboard-layout .sidebar-footer {
-    padding: 20px;
-    border-top: 1px solid var(--color-border-default);
-}
-
-/* Conteúdo principal (MODIFICADO) */
-.dashboard-layout .main-content {
-    margin-left: 220px;
-    width: 100%; 
-    padding-top: 70px; 
-}
-.dashboard-layout .header {
-    left: 220px; 
-    width: calc(100% - 220px);
-    border-bottom: 1px solid var(--color-border-default);
+/* Container Global */
+.container {
+  display: flex;
+  flex-direction: column;
+  gap: 24px;
 }
 
 /* ======================================================= */
-/* 3. ESTILOS DE COMPONENTES (Usam variáveis)               */
+/* 5. CARDS (CONTENT BOX) - O GRANDE DESTAQUE             */
 /* ======================================================= */
-
-/* Caixas de conteúdo (MODIFICADO) */
-.content-box,
-.register-user-container {
-    background-color: var(--color-canvas-default);
-    border: 1px solid var(--color-border-default);
-    border-radius: 6px;
-    padding: 24px;
-    margin-bottom: 24px;
-    box-shadow: 0 1px 0 rgba(27,31,36,0.04);
+.content-box {
+  background-color: var(--bg-card);
+  border-radius: var(--radius-lg);
+  box-shadow: var(--shadow-sm);
+  padding: 24px;
+  border: 1px solid var(--border-color);
+  transition: box-shadow 0.3s ease;
 }
 
-/* Títulos (MODIFICADO) */
-h2 {
-    font-size: 18px;
-    font-weight: 600;
-    margin-bottom: 16px;
-    padding-bottom: 8px;
-    border-bottom: 1px solid var(--color-border-muted);
-    color: var(--color-text-primary);
+.content-box:hover {
+  box-shadow: var(--shadow-md); /* Efeito de elevação leve */
 }
 
-/* Formulário (MODIFICADO) */
-.form-group {
-    margin-bottom: 16px;
-}
-label {
-    display: block;
-    margin-bottom: 6px;
-    font-weight: 500;
-    color: var(--color-text-primary);
-}
-input, select { /* Adicionado 'select' */
-    width: 100%;
-    padding: 6px 12px;
-    font-size: 14px;
-    border: 1px solid var(--color-border-default);
-    border-radius: 6px;
-    background-color: var(--color-canvas-default);
-    color: var(--color-text-primary);
-    box-shadow: var(--color-primer-shadow-inset);
-    transition: border-color 0.15s, box-shadow 0.15s;
-}
-input:focus, select:focus {
-    border-color: var(--color-accent-fg);
-    outline: none;
-    box-shadow: 0 0 0 3px rgba(9,105,218,0.3);
+.content-box h2 {
+  font-size: 1.1rem;
+  font-weight: 600;
+  margin-bottom: 20px;
+  color: var(--text-primary);
+  border-bottom: 1px solid var(--border-color);
+  padding-bottom: 12px;
 }
 
-/* Botões (MODIFICADO) */
-button {
-    display: inline-block;
-    padding: 5px 16px;
-    font-size: 14px;
-    font-weight: 500;
-    line-height: 20px;
-    border: 1px solid var(--color-btn-border);
-    border-radius: 6px;
-    background-color: var(--color-btn-bg);
-    color: var(--color-text-primary);
-    cursor: pointer;
-    transition: all 0.2s ease-in-out;
-}
-button:hover {
-    background-color: var(--color-btn-hover-bg);
-}
-button[type="submit"] {
-    background-color: #2da44e;
-    color: #fff;
-    border-color: var(--color-btn-border);
-}
-button[type="submit"]:hover {
-    background-color: #2c974b;
-}
-
-/* Mensagens de feedback (MODIFICADO) */
-#message, #registerMessage {
-    margin-top: 16px;
-    padding: 10px 16px;
-    border-radius: 6px;
-    font-size: 14px;
-}
-#message.success, #registerMessage.success {
-    background-color: rgba(74,194,107,0.1);
-    border: 1px solid rgba(74,194,107,0.4);
-    color: var(--color-success-fg);
-}
-#message.error, #registerMessage.error {
-    background-color: rgba(248,81,73,0.1);
-    border: 1px solid rgba(248,81,73,0.4);
-    color: var(--color-danger-fg);
-}
-
-/* Links (MODIFICADO) */
-.links a {
-    color: var(--color-text-link);
-    text-decoration: none;
-    font-size: 14px;
-}
-.links a:hover {
-    text-decoration: underline;
-    color: var(--color-accent-hover);
-}
-
-/* Tabelas (MODIFICADO) */
+/* ======================================================= */
+/* 6. TABELAS (ESTILO SAAS)                                */
+/* ======================================================= */
 .records-container {
-    margin-top: 16px;
-    border: 1px solid var(--color-border-default);
-    border-radius: 6px;
-    overflow: hidden;
+  overflow-x: auto;
+  border-radius: var(--radius-md);
+  border: 1px solid var(--border-color);
 }
+
 table {
-    width: 100%;
-    border-collapse: collapse;
-    font-size: 14px;
+  width: 100%;
+  border-collapse: separate; /* Permite border-radius */
+  border-spacing: 0;
+  font-size: 0.9rem;
 }
+
 th {
-    background-color: var(--color-canvas-subtle);
-    font-weight: 600;
-    color: var(--color-text-primary);
+  background-color: var(--bg-body); /* Levemente diferente do card */
+  color: var(--text-secondary);
+  font-weight: 600;
+  text-transform: uppercase;
+  font-size: 0.75rem;
+  letter-spacing: 0.05em;
+  padding: 12px 16px;
+  text-align: left;
+  border-bottom: 1px solid var(--border-color);
 }
-th, td {
-    padding: 12px;
-    text-align: left;
-    border-bottom: 1px solid var(--color-border-muted);
-}
-tbody tr:hover {
-    background-color: var(--color-canvas-subtle);
-}
-tr:last-child td {
-    border-bottom: none;
-}
+
 td {
-    color: var(--color-text-secondary);
-}
-td.duration {
-    color: var(--color-accent-fg);
-    font-weight: bold;
-}
-td.atraso {
-    color: #b35900;
+  padding: 14px 16px;
+  border-bottom: 1px solid var(--border-color);
+  color: var(--text-primary);
+  vertical-align: middle;
 }
 
-/* Responsividade (MODIFICADO) */
-@media (max-width: 768px) {
-    /* ... (Estilos de responsividade originais) ... */
-    body.dashboard-layout { display: block; }
-    .dashboard-layout .sidebar { width: 100%; height: auto; position: relative; }
-    .dashboard-layout .sidebar-header { display: none; }
-    .dashboard-layout .sidebar-menu { display: flex; justify-content: center; }
-    .dashboard-layout .sidebar-menu li { flex: 1; text-align: center; }
-    .dashboard-layout .main-content { margin-left: 0; padding-top: 0; }
-    .dashboard-layout .header { left: 0; width: 100%; position: relative; box-shadow: none; }
-    .container { padding: 12px; margin: 20px auto; }
-    .header h1 { font-size: 18px; }
-    .content-box { padding: 16px; }
-    table, th, td { font-size: 13px; }
-    
-    /* NOVO: Esconde o toggle em texto no mobile */
-    .theme-switch-wrapper span { display: none; }
-    .dashboard-layout .sidebar-footer { text-align: center; }
+tr:last-child td {
+  border-bottom: none;
+}
+
+tr:hover td {
+  background-color: var(--bg-body); /* Highlight na linha */
+}
+
+/* Badges (Etiquetas Coloridas) */
+td.entrada, td.saida, td.atraso, td.no-horario, td span {
+  display: inline-block;
+  padding: 4px 8px;
+  border-radius: 20px;
+  font-weight: 600;
+  font-size: 0.8rem;
+  text-align: center;
+}
+
+td.entrada { background-color: var(--success-bg); color: var(--success-text); }
+td.saida { background-color: var(--warning-bg); color: var(--warning-text); }
+td.atraso { background-color: var(--danger-bg); color: var(--danger-text); }
+td.no-horario { background-color: var(--bg-body); color: var(--text-secondary); border: 1px solid var(--border-color); }
+td.duration { color: var(--primary-color); font-weight: 700; font-family: 'SF Mono', monospace; }
+
+/* ======================================================= */
+/* 7. FORMULÁRIOS & INPUTS                                 */
+/* ======================================================= */
+.form-group {
+  margin-bottom: 20px;
+}
+
+label {
+  display: block;
+  margin-bottom: 8px;
+  font-weight: 500;
+  font-size: 0.9rem;
+  color: var(--text-primary);
+}
+
+input[type="text"],
+input[type="password"],
+input[type="date"],
+input[type="time"],
+select {
+  width: 100%;
+  padding: 10px 14px;
+  border-radius: var(--radius-md);
+  border: 1px solid var(--border-color);
+  background-color: var(--bg-body);
+  color: var(--text-primary);
+  font-size: 0.95rem;
+  transition: all 0.2s;
+}
+
+input:focus, select:focus {
+  outline: none;
+  border-color: var(--primary-color);
+  box-shadow: 0 0 0 3px rgba(37, 99, 235, 0.1);
+  background-color: var(--bg-card);
 }
 
 /* ======================================================= */
-/* 4. NOVO: Estilos do Theme Toggle                       */
+/* 8. BOTÕES                                               */
 /* ======================================================= */
-.theme-switch-wrapper {
-    display: flex;
-    align-items: center;
-    gap: 10px;
-    color: var(--color-sidebar-text);
-}
-.theme-switch {
-    position: relative;
-    display: inline-block;
-    width: 44px; /* Tamanho reduzido */
-    height: 24px;
-}
-.theme-switch input {
-    opacity: 0;
-    width: 0;
-    height: 0;
-}
-.slider {
-    position: absolute;
-    cursor: pointer;
-    top: 0;
-    left: 0;
-    right: 0;
-    bottom: 0;
-    background-color: #444;
-    transition: .4s;
-    border-radius: 24px;
-}
-.slider:before {
-    position: absolute;
-    content: "";
-    height: 18px;
-    width: 18px;
-    left: 3px;
-    bottom: 3px;
-    background-color: white;
-    transition: .4s;
-    border-radius: 50%;
-}
-input:checked + .slider {
-    background-color: var(--color-accent-fg);
-}
-input:checked + .slider:before {
-    transform: translateX(20px);
+button {
+  padding: 10px 20px;
+  border-radius: var(--radius-md);
+  font-weight: 600;
+  font-size: 0.9rem;
+  cursor: pointer;
+  border: none;
+  transition: all 0.2s ease;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  gap: 8px;
 }
 
-/* Modal */
+button.primary, button[type="submit"] {
+  background-color: var(--primary-color);
+  color: white;
+  box-shadow: 0 2px 4px rgba(37, 99, 235, 0.2);
+}
+
+button.primary:hover, button[type="submit"]:hover {
+  background-color: var(--primary-hover);
+  transform: translateY(-1px);
+  box-shadow: 0 4px 6px rgba(37, 99, 235, 0.3);
+}
+
+button.secondary {
+  background-color: transparent;
+  border: 1px solid var(--border-color);
+  color: var(--text-primary);
+}
+
+button.secondary:hover {
+  background-color: var(--bg-body);
+  border-color: var(--text-secondary);
+}
+
+button.small {
+  padding: 6px 12px;
+  font-size: 0.8rem;
+}
+
+.btn-open-modal {
+  background-color: var(--primary-color);
+  color: white;
+  margin-bottom: 0;
+  border-radius: var(--radius-md);
+}
+
+/* ======================================================= */
+/* 9. MODAL (Janelas flutuantes)                           */
+/* ======================================================= */
 .modal-overlay {
-    display: none;
-    position: fixed;
-    top: 0;
-    left: 0;
-    width: 100%;
-    height: 100%;
-    background-color: rgba(27, 31, 35, 0.5);
-    z-index: 1001;
-    backdrop-filter: blur(3px);
+  background-color: rgba(0, 0, 0, 0.6); /* Mais escuro */
+  backdrop-filter: blur(4px); /* Desfoque no fundo */
+  z-index: 1000;
+  position: fixed;
+  top: 0; left: 0; width: 100%; height: 100%;
 }
 
-/* MODIFICADO: Corrigido o 'display' duplicado */
 .modal {
-    display: none; /* ESTA É A LINHA CORRETA (default é escondido) */
-    
-    position: fixed;
-    top: 50%;
-    left: 50%;
-    transform: translate(-50%, -50%);
-    background-color: var(--color-canvas-default);
-    border-radius: 6px;
-    box-shadow: 0 8px 24px rgba(140,149,159,0.2);
-    z-index: 1002;
-    width: 90%;
-    max-width: 600px;
-
-    /* --- ESTILOS PARA SCROLL (ativados pelo JS) --- */
-    /* O 'display: flex' duplicado foi REMOVIDO daqui */
-    flex-direction: column;
-    max-height: 85vh; /* Máximo de 85% da altura da tela */
-    /* ---------------------------------- */
+  background-color: var(--bg-card);
+  border-radius: var(--radius-lg);
+  box-shadow: var(--shadow-lg);
+  width: 90%;
+  max-width: 550px;
+  position: fixed;
+  top: 50%;
+  left: 50%;
+  transform: translate(-50%, -50%);
+  z-index: 1001;
+  border: 1px solid var(--border-color);
+  
+  display: flex;
+  flex-direction: column;
+  max-height: 90vh; /* Para telas pequenas */
+  animation: modalFadeIn 0.3s ease-out;
 }
 
-/* Header (Sem mudanças) */
+@keyframes modalFadeIn {
+  from { opacity: 0; transform: translate(-50%, -45%); }
+  to { opacity: 1; transform: translate(-50%, -50%); }
+}
+
 .modal-header {
-    padding: 16px;
-    border-bottom: 1px solid var(--color-border-muted);
-    display: flex;
-    justify-content: space-between;
-    align-items: center;
-    flex-shrink: 0; /* Não encolher */
+  padding: 20px 24px;
+  border-bottom: 1px solid var(--border-color);
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
 }
 
 .modal-title {
-    font-size: 20px;
-    font-weight: 600;
-    margin: 0;
+  font-size: 1.25rem;
+  font-weight: 700;
+  color: var(--text-primary);
+  margin: 0;
 }
 
-.modal-close {
-    background: none;
-    border: none;
-    padding: 4px;
-    cursor: pointer;
-    color: #57606a;
-}
-
-.modal-close:hover {
-    color: #24292f;
-}
-
-/* Corpo (Sem mudanças) */
 .modal-body {
-    padding: 16px;
-    flex: 1; /* Ocupa o espaço disponível */
-    overflow-y: auto; /* Adiciona scroll APENAS se necessário */
+  padding: 24px;
+  overflow-y: auto;
 }
 
-/* Footer (Sem mudanças) */
 .modal-footer {
-    padding: 16px;
-    border-top: 1px solid var(--color-border-muted);
-    display: flex;
-    justify-content: flex-end;
-    gap: 8px;
-    flex-shrink: 0; /* Não encolher */
+  padding: 16px 24px;
+  border-top: 1px solid var(--border-color);
+  background-color: var(--bg-body); /* Rodapé levemente diferente */
+  border-bottom-left-radius: var(--radius-lg);
+  border-bottom-right-radius: var(--radius-lg);
+  display: flex;
+  justify-content: flex-end;
+  gap: 12px;
 }
 
-.modal-footer button {
-    padding: 5px 16px;
-}
-
-.modal-footer button.secondary {
-    background-color: var(--color-btn-bg);
-    color: #24292f;
-}
-
-.modal-footer button.primary {
-    background-color: #2da44e;
-    color: #ffffff;
-}
-
-/* Botão de abrir modal (Sem mudanças) */
-.btn-open-modal {
-    margin-bottom: 16px;
-    background-color: var(--color-btn-bg);
-    border: 1px solid var(--color-border-default);
-    padding: 5px 16px;
-    border-radius: 6px;
-    font-size: 14px;
-    font-weight: 500;
-    cursor: pointer;
-}
-
-.btn-open-modal:hover {
-    background-color: var(--color-btn-hover-bg);
-    border-color: var(--color-border-muted);
-}
-
-/* Estilos do editor de jornada (Sem mudanças) */
+/* Editor de Horários dentro do Modal */
 .schedule-day-row {
-    display: flex;
-    align-items: center;
-    justify-content: space-between;
+  display: grid;
+  grid-template-columns: 80px 1fr auto 1fr;
+  align-items: center;
+  gap: 10px;
+  padding: 8px 0;
+  border-bottom: 1px solid var(--border-color);
+}
+.schedule-day-row:last-child {
+  border-bottom: none;
 }
 .schedule-day-row label {
-    flex-basis: 100px;
-    margin-bottom: 0;
-}
-.schedule-day-row input[type="time"] {
-    flex: 1;
+  margin-bottom: 0;
+  font-weight: 600;
+  font-size: 0.85rem;
 }
 .schedule-day-row span {
-    margin: 0 10px;
-    color: #57606a;
+  font-size: 0.8rem;
+  color: var(--text-secondary);
+}
+
+/* ======================================================= */
+/* 10. TOGGLE SWITCH (Tema)                                */
+/* ======================================================= */
+.theme-switch-wrapper {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+}
+
+.theme-switch {
+  position: relative;
+  display: inline-block;
+  width: 48px;
+  height: 26px;
+}
+
+.theme-switch input { opacity: 0; width: 0; height: 0; }
+
+.slider {
+  position: absolute;
+  cursor: pointer;
+  top: 0; left: 0; right: 0; bottom: 0;
+  background-color: rgba(255,255,255,0.2);
+  transition: .4s;
+  border-radius: 34px;
+}
+
+.slider:before {
+  position: absolute;
+  content: "";
+  height: 20px;
+  width: 20px;
+  left: 3px;
+  bottom: 3px;
+  background-color: white;
+  transition: .4s;
+  border-radius: 50%;
+  box-shadow: 0 2px 4px rgba(0,0,0,0.2);
+}
+
+input:checked + .slider {
+  background-color: var(--primary-color);
+}
+
+input:checked + .slider:before {
+  transform: translateX(22px);
 }

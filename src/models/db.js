@@ -1,51 +1,69 @@
 const sqlite3 = require('sqlite3').verbose();
 const path = require('path');
 
-const dbPath = path.join(__dirname, '../../database.sqlite');
-const db = new sqlite3.Database(dbPath);
+// Cria o arquivo na raiz do projeto
+const dbPath = path.resolve(__dirname, '../database.sqlite');
 
-// Criação das tabelas
-const createTables = () => {
-    // Tabela de usuários
-    db.run(`CREATE TABLE IF NOT EXISTS users (
-        id INTEGER PRIMARY KEY AUTOINCREMENT,
-        name TEXT NOT NULL,
-        cpf TEXT NOT NULL UNIQUE,
-        password TEXT NOT NULL,
-        cargo TEXT,
-        email TEXT,
-        is_admin INTEGER DEFAULT 0
-    )`);
+const db = new sqlite3.Database(dbPath, (err) => {
+    if (err) {
+        console.error('Erro ao conectar ao banco de dados:', err.message);
+    } else {
+        console.log('✅ Conectado ao banco de dados SQLite.');
+        initDb();
+    }
+});
 
-    // NOVA TABELA: Horários dos usuários
-    db.run(`CREATE TABLE IF NOT EXISTS user_schedules (
-        user_id INTEGER NOT NULL,
-        day_of_week INTEGER NOT NULL, -- 0=Domingo, 1=Segunda, ..., 6=Sábado
-        entry_time TEXT,
-        exit_time TEXT,
-        FOREIGN KEY(user_id) REFERENCES users(id) ON DELETE CASCADE,
-        PRIMARY KEY (user_id, day_of_week)
-    )`);
+function initDb() {
+    db.serialize(() => {
+        // 1. Tabela de Usuários (Adicionado coluna 'role')
+        db.run(`
+            CREATE TABLE IF NOT EXISTS users (
+                id INTEGER PRIMARY KEY AUTOINCREMENT,
+                name TEXT NOT NULL,
+                cpf TEXT NOT NULL UNIQUE,
+                password TEXT NOT NULL,
+                cargo TEXT,
+                role TEXT DEFAULT 'employee' -- 'employee' ou 'visitor'
+            )
+        `);
 
-    // Tabela de registros de ponto
-    db.run(`CREATE TABLE IF NOT EXISTS time_records (
-        id INTEGER PRIMARY KEY AUTOINCREMENT,
-        user_id INTEGER NOT NULL,
-        date TEXT NOT NULL,
-        time TEXT NOT NULL,
-        type TEXT CHECK(type IN ('entrada', 'saida')) NOT NULL DEFAULT 'entrada',
-        status TEXT DEFAULT NULL,
-        work_duration INTEGER DEFAULT NULL,
-        FOREIGN KEY(user_id) REFERENCES users(id)
-    )`, (err) => {
-        if (err) {
-            console.error('Erro ao criar tabela time_records:', err);
-        } else {
-            console.log('Tabelas verificadas/criadas com sucesso.');
-        }
+        // 2. Tabela de Horários (Apenas para Employees)
+        db.run(`
+            CREATE TABLE IF NOT EXISTS user_schedules (
+                id INTEGER PRIMARY KEY AUTOINCREMENT,
+                user_id INTEGER,
+                day_of_week INTEGER, -- 0=Dom, 1=Seg...
+                entry_time TEXT,
+                exit_time TEXT,
+                FOREIGN KEY(user_id) REFERENCES users(id)
+            )
+        `);
+
+        // 3. Tabela de Registros de Ponto
+        db.run(`
+            CREATE TABLE IF NOT EXISTS time_records (
+                id INTEGER PRIMARY KEY AUTOINCREMENT,
+                user_id INTEGER,
+                date TEXT,     -- DD/MM/AAAA
+                time TEXT,     -- HH:MM:SS
+                type TEXT,     -- 'entrada' ou 'saida'
+                status TEXT,   -- 'no_horario', 'atraso'
+                work_duration INTEGER, -- em minutos
+                FOREIGN KEY(user_id) REFERENCES users(id)
+            )
+        `);
+
+        // 4. NOVO: Tabela de Atestados
+        db.run(`
+            CREATE TABLE IF NOT EXISTS certificates (
+                id INTEGER PRIMARY KEY AUTOINCREMENT,
+                user_id INTEGER,
+                date TEXT,      -- DD/MM/AAAA (A data da falta)
+                reason TEXT,    -- Motivo (ex: "Consulta médica")
+                FOREIGN KEY(user_id) REFERENCES users(id)
+            )
+        `);
     });
-};
-
-createTables();
+}
 
 module.exports = db;

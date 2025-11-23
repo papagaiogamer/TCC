@@ -3,13 +3,16 @@ import { useSocket } from '../context/SocketContext';
 
 function Historico() {
   const socket = useSocket();
-  
-  // Estado para a data selecionada e as listas de dados
   const [selectedDate, setSelectedDate] = useState('');
   const [records, setRecords] = useState([]);
   const [missingUsers, setMissingUsers] = useState([]);
+  
+  // Estados para o Modal de Atestado
+  const [showCertificateModal, setShowCertificateModal] = useState(false);
+  const [certUser, setCertUser] = useState(null); // Usuário selecionado para justificar
+  const [certReason, setCertReason] = useState('');
+  const [certMessage, setCertMessage] = useState('');
 
-  // Função auxiliar para formatar duração (ex: 8h 30m)
   const formatDuration = (totalMinutes) => {
     if (totalMinutes === null || totalMinutes === undefined) return '—';
     const hours = Math.floor(totalMinutes / 60);
@@ -17,7 +20,6 @@ function Historico() {
     return `${hours}h ${String(minutes).padStart(2, '0')}m`;
   };
 
-  // Função auxiliar para pegar a data de hoje no formato YYYY-MM-DD
   const getTodayDate = () => {
     const today = new Date();
     const y = today.getFullYear();
@@ -26,110 +28,88 @@ function Historico() {
     return `${y}-${m}-${d}`;
   };
 
-  // Efeito inicial e configuração dos ouvintes do Socket
   useEffect(() => {
     if (!socket) return;
-
-    // Define a data inicial como hoje
     const today = getTodayDate();
     setSelectedDate(today);
-
-    // Pede os dados iniciais
     socket.emit('get-history', { date: today });
 
-    // --- Listeners (Ouvintes) ---
+    socket.on('time-records', (data) => setRecords(data));
+    socket.on('missing-users', (data) => setMissingUsers(data));
     
-    // O servidor responde 'time-records' com a lista de pontos
-    socket.on('time-records', (data) => {
-      setRecords(data);
+    // Sucesso ao dar atestado
+    socket.on('certificate-registered', (data) => {
+        setCertMessage(data.message);
+        setTimeout(() => {
+            setShowCertificateModal(false);
+            setCertMessage('');
+            setCertReason('');
+        }, 1500);
     });
 
-    // O servidor responde 'missing-users' com a lista de ausentes
-    socket.on('missing-users', (data) => {
-      setMissingUsers(data);
-    });
-
-    // Limpeza ao sair da tela
     return () => {
       socket.off('time-records');
       socket.off('missing-users');
+      socket.off('certificate-registered');
     };
   }, [socket]);
 
-  // Função chamada quando o usuário muda a data no input
   const handleDateChange = (e) => {
     const newDate = e.target.value;
     setSelectedDate(newDate);
-    
-    if (newDate) {
-      // Pede ao servidor os dados da nova data
-      socket.emit('get-history', { date: newDate });
-    }
+    if (newDate) socket.emit('get-history', { date: newDate });
   };
 
-  // Formata a data para exibir no título (DD/MM/AAAA)
+  // Abrir modal de atestado
+  const openJustifyModal = (user) => {
+      setCertUser(user);
+      setCertReason('');
+      setCertMessage('');
+      setShowCertificateModal(true);
+  };
+
+  const submitCertificate = () => {
+      if(!certReason) return;
+      // Envia data no formato YYYY-MM-DD para o backend tratar ou salvar
+      // No server.js esperamos o formato que o sqlite aceita ou DD/MM/AAAA.
+      // Vamos mandar DD/MM/AAAA para bater com a tabela
+      const [year, month, day] = selectedDate.split('-');
+      const formattedDate = `${day}/${month}/${year}`;
+
+      socket.emit('register-certificate', {
+          userId: certUser.id,
+          date: formattedDate,
+          reason: certReason
+      });
+  };
+
   const displayDate = selectedDate ? selectedDate.split('-').reverse().join('/') : '...';
 
   return (
     <div className="container">
-      {/* Controle de Data */}
       <div className="content-box">
         <div className="form-group" style={{ maxWidth: '300px' }}>
           <label htmlFor="historyDate">Consultar Histórico por Data:</label>
-          <input 
-            type="date" 
-            id="historyDate" 
-            className="input-date"
-            value={selectedDate}
-            onChange={handleDateChange}
-          />
+          <input type="date" id="historyDate" className="input-date" value={selectedDate} onChange={handleDateChange} />
         </div>
       </div>
 
-      {/* Tabela 1: Registros de Ponto */}
       <div className="content-box">
         <h2>Registros de Ponto ({displayDate})</h2>
         <div className="records-container">
           <table>
-            <thead>
-              <tr>
-                <th>Nome</th>
-                <th>Data</th>
-                <th>Hora</th>
-                <th>Tipo</th>
-                <th>Status</th>
-                <th>Jornada</th>
-              </tr>
-            </thead>
+            <thead><tr><th>Nome</th><th>Hora</th><th>Tipo</th><th>Status</th><th>Jornada</th></tr></thead>
             <tbody>
               {records.length === 0 ? (
-                <tr>
-                  <td colSpan="6" style={{textAlign: 'center', color: 'gray'}}>
-                    Nenhum ponto registrado nesta data.
-                  </td>
-                </tr>
+                <tr><td colSpan="5" style={{textAlign: 'center'}}>Nenhum ponto registrado.</td></tr>
               ) : (
-                records.map((record, index) => (
-                  <tr key={index}>
-                    <td>{record.userId}</td>
-                    <td>{record.date}</td>
-                    <td>{record.time}</td>
-                    
-                    <td className={record.type === 'entrada' ? 'entrada' : 'saida'}>
-                      {record.type === 'entrada' ? 'Entrada' : 'Saída'}
-                    </td>
-
-                    <td className={
-                      record.status === 'atraso' ? 'atraso' : 
-                      record.status === 'no_horario' ? 'no-horario' : 'na'
-                    }>
-                      {record.status === 'atraso' ? 'Atraso' : 
-                       record.status === 'no_horario' ? 'No horário' : '—'}
-                    </td>
-
-                    <td className={record.type === 'saida' ? 'duration' : 'na'}>
-                      {record.type === 'saida' ? formatDuration(record.work_duration) : '—'}
-                    </td>
+                records.map((r, i) => (
+                  <tr key={i}>
+                    <td>{r.userId} <small style={{color:'#888'}}>({r.role === 'visitor' ? 'Visitante' : 'Func.'})</small></td>
+                    <td>{r.time}</td>
+                    <td className={r.type === 'entrada' ? 'entrada' : 'saida'}>{r.type === 'entrada' ? 'Entrada' : 'Saída'}</td>
+                    <td className={r.status === 'atraso' ? 'atraso' : 'no-horario'}>{r.status === 'atraso' ? 'Atraso' : r.status === 'visitante' ? 'Livre' : 'No horário'}</td>
+                    <td className={r.type === 'saida' ? 'duration' : 'na'}>{r.type === 'saida' ? formatDuration(r.work_duration) : '—'}</td>
                   </tr>
                 ))
               )}
@@ -138,31 +118,30 @@ function Historico() {
         </div>
       </div>
 
-      {/* Tabela 2: Usuários Ausentes */}
       <div className="content-box">
-        <h2>Usuários que não bateram ponto ({displayDate})</h2>
+        <h2>Faltas / Atestados ({displayDate})</h2>
         <div className="records-container">
           <table>
-            <thead>
-              <tr>
-                <th>Nome</th>
-                <th>Horário Entrada</th>
-                <th>Horário Saída</th>
-              </tr>
-            </thead>
+            <thead><tr><th>Nome</th><th>Horário Previsto</th><th>Situação</th><th>Ação</th></tr></thead>
             <tbody>
               {missingUsers.length === 0 ? (
-                <tr>
-                  <td colSpan="3" style={{textAlign: 'center', color: 'gray'}}>
-                    Todos bateram ponto nesta data!
-                  </td>
-                </tr>
+                <tr><td colSpan="4" style={{textAlign: 'center'}}>Nenhuma falta registrada.</td></tr>
               ) : (
                 missingUsers.map((user) => (
                   <tr key={user.id}>
                     <td>{user.name}</td>
-                    <td>{user.entry_time}</td>
-                    <td>{user.exit_time}</td>
+                    <td>{user.entry_time} - {user.exit_time}</td>
+                    <td>
+                        {user.isJustified 
+                            ? <span style={{color: 'green', fontWeight: 'bold'}}>✓ Atestado: {user.reason}</span> 
+                            : <span style={{color: 'red'}}>Falta</span>
+                        }
+                    </td>
+                    <td>
+                        {!user.isJustified && (
+                            <button className="secondary small" onClick={() => openJustifyModal(user)}>Justificar</button>
+                        )}
+                    </td>
                   </tr>
                 ))
               )}
@@ -170,6 +149,28 @@ function Historico() {
           </table>
         </div>
       </div>
+
+      {/* MODAL DE ATESTADO */}
+      <div className="modal-overlay" style={{ display: showCertificateModal ? 'block' : 'none' }} onClick={() => setShowCertificateModal(false)}></div>
+      <div className="modal" style={{ display: showCertificateModal ? 'flex' : 'none', height: 'auto' }}>
+          <div className="modal-header">
+              <h3 className="modal-title">Justificar Falta: {certUser?.name}</h3>
+              <button className="modal-close" onClick={() => setShowCertificateModal(false)}>✕</button>
+          </div>
+          <div className="modal-body">
+              <p>Data: <strong>{displayDate}</strong></p>
+              <div className="form-group">
+                  <label>Motivo / Atestado:</label>
+                  <input type="text" value={certReason} onChange={(e) => setCertReason(e.target.value)} placeholder="Ex: Atestado Médico, Problema familiar..." />
+              </div>
+              {certMessage && <p style={{color: 'green'}}>{certMessage}</p>}
+          </div>
+          <div className="modal-footer">
+              <button className="secondary" onClick={() => setShowCertificateModal(false)}>Cancelar</button>
+              <button className="primary" onClick={submitCertificate}>Salvar Justificativa</button>
+          </div>
+      </div>
+
     </div>
   );
 }
