@@ -1,5 +1,6 @@
 import React, { useState, useEffect } from 'react';
 import { useSocket } from '../context/SocketContext';
+import Clock from '../components/Clock'; // Importando o relógio
 
 function Login() {
   const socket = useSocket();
@@ -7,21 +8,25 @@ function Login() {
   const [password, setPassword] = useState('');
   const [message, setMessage] = useState({ text: '', type: '' });
 
-  // CORREÇÃO DE LAYOUT: Centraliza a tela removendo a sidebar
+  // Ajuste de Layout (Remove a sidebar nesta página)
   useEffect(() => {
     document.body.classList.remove('dashboard-layout');
     return () => document.body.classList.add('dashboard-layout');
   }, []);
 
+  // Listeners do Socket
   useEffect(() => {
     if (!socket) return;
+
     socket.on('auth-success', (data) => {
       setMessage({ text: data.message, type: 'success' });
-      setPassword('');
+      setPassword(''); // Limpa a senha para o próximo
     });
+
     socket.on('auth-error', (data) => {
       setMessage({ text: data.message, type: 'error' });
     });
+
     return () => {
       socket.off('auth-success');
       socket.off('auth-error');
@@ -31,7 +36,11 @@ function Login() {
   const handleSubmit = (e) => {
     e.preventDefault();
     if (!socket) return;
-    setMessage({ text: 'Verificando...', type: '' });
+    
+    setMessage({ text: 'Processando...', type: '' });
+    
+    // Enviamos apenas CPF e Senha.
+    // O servidor decide se é Entrada, Almoço ou Saída.
     socket.emit('register-time', { cpf, password });
   };
 
@@ -42,18 +51,24 @@ function Login() {
       alignItems: 'center', 
       minHeight: '100vh', 
       width: '100%',
-      backgroundColor: 'var(--bg-body)'
+      backgroundColor: 'var(--bg-body)' 
     }}>
       <div className="content-box" style={{ width: '100%', maxWidth: '420px', padding: '32px' }}>
-        <h1 style={{ textAlign: 'center', marginBottom: '8px', fontSize: '1.5rem', color: 'var(--text-primary)' }}>Registro de Ponto</h1>
-        <p style={{ textAlign: 'center', marginBottom: '32px', color: 'var(--text-secondary)' }}>Digite suas credenciais abaixo</p>
+        
+        {/* RELÓGIO EM TEMPO REAL */}
+        <Clock />
+
+        <h1 style={{ textAlign: 'center', fontSize: '1.5rem', marginBottom: '10px' }}>Registro de Ponto</h1>
+        <p style={{ textAlign: 'center', marginBottom: '25px', color: 'var(--text-secondary)' }}>
+          Digite suas credenciais
+        </p>
         
         <form onSubmit={handleSubmit}>
           <div className="form-group">
             <label htmlFor="cpf">CPF:</label>
             <input 
               type="text" 
-              id="cpf" 
+              id="cpf"
               required 
               maxLength="11" 
               placeholder="Apenas números" 
@@ -67,7 +82,7 @@ function Login() {
             <label htmlFor="password">Senha (ou CPF para Visitantes):</label>
             <input 
               type="password" 
-              id="password" 
+              id="password"
               required 
               placeholder="Digite sua senha" 
               value={password} 
@@ -75,11 +90,12 @@ function Login() {
             />
           </div>
 
-          <button type="submit" className="primary" style={{ width: '100%', marginTop: '16px', padding: '12px' }}>
+          <button type="submit" className="primary" style={{ width: '100%', marginTop: '15px', padding: '12px' }}>
             Registrar Ponto
           </button>
         </form>
 
+        {/* Mensagens de Erro ou Sucesso */}
         {message.text && (
           <div style={{
             marginTop: '20px',
@@ -95,7 +111,7 @@ function Login() {
         )}
 
         <div style={{ marginTop: '30px', textAlign: 'center', borderTop: '1px solid var(--border-color)', paddingTop: '20px' }}>
-            <a href="/admin-login" style={{ color: 'var(--primary-color)', textDecoration: 'none', fontWeight: '500', fontSize: '0.9rem' }}>
+            <a href="/admin-login" style={{ color: 'var(--primary-color)', textDecoration: 'none', fontSize: '0.9rem' }}>
                Sou Administrador
             </a>
         </div>
